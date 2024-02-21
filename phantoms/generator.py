@@ -3,9 +3,21 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 
+def cilinder(im: npt.NDArray, center, radius: int, intensity: float = 1):
+    assert len(im.shape) == 3, "Image must be 3D"
+    xx, yy, zz = im.shape
+    for z in range(zz):
+        for x in range(xx):
+            for y in range(yy):
+                if (x - center[0])**2 + (y - center[1])**2 <= radius**2:
+                    im[x][y][z] = intensity
+    return im
+
+
 def circle(im: npt.NDArray, center, radius: int, intensity: float = 1):
-    for r in range(len(im)):
-        for c in range(len(im[0])):
+    rows, cols = im.shape
+    for r in range(rows):
+        for c in range(cols):
             if (r - center[0])**2 + (c - center[1])**2 <= radius**2:
                 im[r][c] = intensity
     return im
@@ -57,38 +69,43 @@ def check_boundaries(im, center, radius):
 
 NUM_CIRCLES = 100
 
-image = np.zeros((512, 512))
+image = np.zeros((512, 512, 512))
 
 # Generate the big circle
-image = circle(image, (256, 256), 256, intensity=1)
-printed_circles = 0
-failed_circle = 0
-high_radius = 50
-while printed_circles < NUM_CIRCLES:
-    #Generate random circle parameters
-    rndm_radius = np.random.randint(2, high_radius)
-    rndm_center = (np.random.randint(0, 512), np.random.randint(0, 512))
+image = cilinder(image, (256, 256), 256, intensity=1)
 
-    if not check_boundaries(image, rndm_radius, rndm_center):
-        continue
-
-    out = add_circle(image, rndm_center, rndm_radius)
-
-    if out is not None:
-        # Circle was added successfully, there was an empty space to put it
-        failed_circle = 0
-        printed_circles += 1
-        image = out
-        if printed_circles % 10 == 0:
-            print(f"{printed_circles} / {NUM_CIRCLES} , high_radius = {high_radius}")
-    else:
-        failed_circle += 1
-
-    # If fails many times, reduce the maximum radius to make it easier
-    if failed_circle == 7:
-        high_radius = max(1, high_radius - 3)
-
-
-plt.figure(1)
-plt.imshow(image, cmap='gray')
+fig = plt.figure()
+fig.add_subplot(111, projection='3d').plot_surface(image, cmap='gray')
 plt.show()
+
+# printed_circles = 0
+# failed_circle = 0
+# high_radius = 50
+# while printed_circles < NUM_CIRCLES:
+#     #Generate random circle parameters
+#     rndm_radius = np.random.randint(2, high_radius)
+#     rndm_center = (np.random.randint(0, 512), np.random.randint(0, 512))
+#
+#     if not check_boundaries(image, rndm_radius, rndm_center):
+#         continue
+#
+#     out = add_circle(image, rndm_center, rndm_radius)
+#
+#     if out is not None:
+#         # Circle was added successfully, there was an empty space to put it
+#         failed_circle = 0
+#         printed_circles += 1
+#         image = out
+#         if printed_circles % 10 == 0:
+#             print(f"{printed_circles} / {NUM_CIRCLES} , high_radius = {high_radius}")
+#     else:
+#         failed_circle += 1
+#
+#     # If fails many times, reduce the maximum radius to make it easier
+#     if failed_circle == 7:
+#         high_radius = max(1, high_radius - 3)
+#
+#
+# plt.figure(1)
+# plt.imshow(image, cmap='gray')
+# plt.show()
