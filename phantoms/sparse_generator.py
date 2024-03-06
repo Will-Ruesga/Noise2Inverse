@@ -3,60 +3,34 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 
-def cilinder(im: npt.NDArray, center, radius: int, intensity: float = 1):
+def cylinder(im: npt.NDArray, center, radius: int, intensity: float = 1):
     assert len(im.shape) == 3, "Image must be 3D"
     xx, yy, zz = im.shape
+    x_coords, y_coords = np.meshgrid(np.arange(xx), np.arange(yy))
+    dist_squared = (x_coords - center[0]) ** 2 + (y_coords - center[1]) ** 2
+
+    mask = dist_squared <= radius ** 2
     for z in range(zz):
-        print(z)
-        for x in range(xx):
-            for y in range(yy):
-                if (x - center[0])**2 + (y - center[1])**2 <= radius**2:
-                    im[x][y][z] = intensity
+        im[:, :, z][mask] = intensity
     return im
 
 
-def circle(im: npt.NDArray, center, radius: int, intensity: float = 1):
-    rows, cols = im.shape
-    for r in range(rows):
-        for c in range(cols):
-            if (r - center[0])**2 + (c - center[1])**2 <= radius**2:
-                im[r][c] = intensity
-    return im
-
-
-def add_sphere(im: npt.NDArray, center, radius: int):
+def add_sphere(im: npt.NDArray, center, radius: int, overlap):
     im = im.copy()
     for z in range(center[2] - radius, center[2] + radius + 1):
         for x in range(center[0] - radius, center[0] + radius + 1):
             for y in range(center[1] - radius, center[1] + radius + 1):
                 if (x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2 <= radius**2:
-                    if im[x][y][z] == 0:
+                    if im[x][y][z] == 0 and overlap:
                         return None
                     if (x - center[0]) ** 2 + (y - center[1]) ** 2 + (z - center[2]) ** 2 <= (radius - 2) ** 2:
                         im[x][y][z] = 0
     return im
 
 
-def ellipse(im: npt.NDArray, center, width: int, height: int, intensity: float = 1):
-    for r in range(len(im)):
-        for c in range(len(im[0])):
-            if (r - center[0])**2 / (height/2)**2 + (c - center[1])**2 / (width/2)**2 <= 1:
-                im[r][c] = intensity
-    return im
-
-
-def ellipse_contour(im, center, width, height, border, intensity: float = 1):
-    for r in range(len(im)):
-        for c in range(len(im[0])):
-            first_cond = (r - center[0])**2 / (height/2)**2 + (c - center[1])**2 / (width/2)**2 <= 1
-            second_cond = (r - center[0]) ** 2 / ((height - border) / 2) ** 2 + (c - center[1]) ** 2 / (
-                    (width - border) / 2) ** 2 <= 1
-            if first_cond and not second_cond:
-                im[r][c] = intensity
-    return im
-
-
-def check_boundaries(im, center, radius):
+def check_boundaries(im, center, radius, overlap):
+    if overlap:
+        return True
     cond1 = (im[center[0] - radius, center[1], center[2]] == 0)
     cond2 = (im[center[0] + radius, center[1], center[2]] == 0)
     cond3 = (im[center[0], center[1] - radius, center[2]] == 0)
@@ -78,8 +52,10 @@ SIZES = 512
 HEIGHT = 32
 image = np.zeros((SIZES, SIZES, HEIGHT))
 
+PROB_OVERLAP = 0.1
+
 # Generate the big circle
-image = cilinder(image, (SIZES // 2, SIZES // 2), SIZES // 2, intensity=1)
+image = cylinder(image, (SIZES // 2, SIZES // 2), SIZES // 2, intensity=1)
 
 printed_circles = 0
 failed_circle = 0
@@ -89,10 +65,12 @@ while printed_circles < NUM_CIRCLES:
     rndm_radius = np.random.randint(2, high_radius)
     rndm_center = (np.random.randint(rndm_radius, SIZES - rndm_radius), np.random.randint(rndm_radius, SIZES - rndm_radius), np.random.randint(rndm_radius, HEIGHT - rndm_radius))
 
-    if not check_boundaries(image, rndm_center, rndm_radius):
+    overlap = np.random.rand() < PROB_OVERLAP
+
+    if not check_boundaries(image, rndm_center, rndm_radius, overlap):
         continue
 
-    out = add_sphere(image, rndm_center, rndm_radius)
+    out = add_sphere(image, rndm_center, rndm_radius, overlap)
 
     if out is not None:
         # Circle was added successfully, there was an empty space to put it
