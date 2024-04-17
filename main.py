@@ -1,16 +1,16 @@
 import astra
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
 import time
+from tqdm import tqdm
 
-from foam_generator import FoamGenerator
+from phantoms.foam_generator import FoamGenerator
 
 
 NUM_PROJECTIONS = 1024
 NUM_ITERATIONS = 200
 PIXELS = 512
-DETECTOR_SHAPE = (PIXELS, np.ceil(np.sqrt(PIXELS**2 + PIXELS**2)))
+DETECTOR_SHAPE = (PIXELS, int(np.ceil(np.sqrt(PIXELS**2 + PIXELS**2))))
 
 def generate_foam(num_pixels: int = 256, num_spheres: int = 1000, prob_overlap: float = 0.0) -> npt.NDArray:
     """
@@ -93,56 +93,20 @@ if __name__ == "__main__":
     print("Projection generated.")
     print("Projection data shape:", proj_data.shape)
 
+    # Split sinogram
+    proj_data = np.split(proj_data, proj_data.shape[1], axis=1)
 
-    # Plot 4 sinograms
-    projections = [proj_data]
-    titles = ["Original", "Noisy α=50%, I0=100", "Noisy α=50%, I0=1000", "Noisy α=80%, I0=100"]
-    plt.figure()
-    n_slices = proj_data.shape[0]
-    plt.subplot(2, 2, 1)
-    plt.imshow(proj_data[n_slices // 2], cmap='gray')
-    plt.axis('off')
-    plt.title("Original sinogram")
-    plt.subplot(2, 2, 2)
-    noisy_sinogram = generate_noisy_sinogram(proj_data, 0.5, 100)
-    projections.append(noisy_sinogram)
-    plt.imshow(noisy_sinogram[n_slices // 2], cmap='gray')
-    plt.axis('off')
-    plt.title("Noisy sinogram α=50%, I0=100")
-    plt.subplot(2, 2, 3)
-    noisy_sinogram = generate_noisy_sinogram(proj_data, 0.5, 1000)
-    projections.append(noisy_sinogram)
-    plt.imshow(noisy_sinogram[n_slices // 2], cmap='gray')
-    plt.axis('off')
-    plt.title("Noisy sinogram α=50%, I0=1000")
-    plt.subplot(2, 2, 4)
-    noisy_sinogram = generate_noisy_sinogram(proj_data, 0.8, 100)
-    projections.append(noisy_sinogram)
-    plt.imshow(noisy_sinogram[n_slices // 2], cmap='gray')
-    plt.axis('off')
-    plt.title("Noisy sinogram α=80%, I0=100")
-    plt.suptitle("Sinograms")
-    plt.savefig("noisy_sinograms.png", dpi=600)
-
-    # Generate the reconstructions
-    plt.figure()
-    for i, proj in enumerate(projections):
-        plt.subplot(2, 2, i + 1)
-        proj_sino = astra.create_proj_geom('parallel', 1.0, max_distance, np.linspace(0, np.pi, NUM_PROJECTIONS, False))
+    for proj in tqdm(proj_data):
+        proj_sino = astra.create_proj_geom('parallel', 1.0, DETECTOR_SHAPE[1], np.linspace(0, np.pi, NUM_PROJECTIONS, False))
         sinogram_id = astra.data2d.create('-sino', proj_sino, proj[proj.shape[0] // 2])
         recon_id = astra.data2d.create('-vol', vol_geom, 0)
-        cfg = astra.astra_dict('SIRT_CUDA')
+        cfg = astra.astra_dict('BP_CUDA')
         cfg['ReconstructionDataId'] = recon_id
         cfg['ProjectionDataId'] = sinogram_id
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, NUM_ITERATIONS)
         rec = astra.data2d.get(recon_id)
-        plt.imshow(rec, cmap='gray')
-        plt.axis('off')
-        plt.title(titles[i])
-        print("Finished reconstruction", i)
-    plt.suptitle("Reconstructions")
-    plt.savefig("reconstructions.png", dpi=600)
+
 
     astra.algorithm.delete(alg_id)
     astra.data2d.delete(recon_id)
