@@ -116,6 +116,6 @@ class FoamGenerator:
 
         # Save phantom
         if overlap_flag:
-            np.save('./foam_phantom_overlap.npy', phantom)
+            np.save('./phantoms/save/foam_phantom_overlap.npy', phantom)
         else:
-            np.save('./foam_phantom.npy', phantom)
+            np.save('./phantoms/save/foam_phantom.npy', phantom)

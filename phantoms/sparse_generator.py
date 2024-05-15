@@ -113,6 +113,6 @@ class SparseGenerator:
 
         # Save phantom
         if overlap_flag:
-            np.save('./sparse_phantom_overlap.npy', phantom)
+            np.save('./phantoms/save/sparse_phantom_overlap.npy', phantom)
         else:
-            np.save('./sparse_phantom.npy', phantom)
+            np.save('./phantoms/save/sparse_phantom.npy', phantom)
