@@ -3,7 +3,30 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 
+####################################################################################################
+#                                             CONSTANTS                                            #
+####################################################################################################
+
+RADIUS_CYLINDER = 0.5
+CENTER_CYLINDER = (0.5, 0.5)
+
+# Set seed
+np.random.seed(42)
+
+####################################################################################################
+#                                             FUNCTIONS                                            #
+####################################################################################################
+
 class SparseGenerator:
+    '''
+        Generates a foam phantom with the sparse method. Placing each sphere randomly if it fits.
+
+        Paramters:
+        - img_pixels: number of piels of the phantom
+        - num_spheres: number os small shperes (bubbles) inside the phantom
+        - prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
+    '''
+    
     def __init__(self, img_pixels: int = 512, num_spheres: int = 1000, prob_overlap: float = 0):
         self.img_pixels = img_pixels
         self.num_spheres = num_spheres
@@ -52,10 +75,10 @@ class SparseGenerator:
         except:
             return False
 
-    def run(self):
-        image = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
+    def create_phantom(self, overlap_flag=False):
+        phantom = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
         # Generate the big circle
-        image = self.cylinder(image, (self.img_pixels // 2, self.img_pixels // 2), self.img_pixels // 2, intensity=1)
+        phantom = self.cylinder(phantom, (self.img_pixels // 2, self.img_pixels // 2), self.img_pixels // 2, intensity=1)
 
         printed_circles = 0
         failed_circle = 0
@@ -69,16 +92,16 @@ class SparseGenerator:
 
             overlap = np.random.rand() < self.prob_overlap
 
-            if not self.check_boundaries(image, rndm_center, rndm_radius, overlap):
+            if not self.check_boundaries(phantom, rndm_center, rndm_radius, overlap):
                 continue
 
-            out = self.add_sphere(image, rndm_center, rndm_radius, overlap)
+            out = self.add_sphere(phantom, rndm_center, rndm_radius, overlap)
 
             if out is not None:
                 # Circle was added successfully, there was an empty space to put it
                 failed_circle = 0
                 printed_circles += 1
-                image = out
+                phantom = out
                 if printed_circles % 100 == 0:
                     print(f"{printed_circles} / {self.num_spheres} , high_radius = {high_radius}")
             else:
@@ -87,35 +110,9 @@ class SparseGenerator:
             # If fails many times, reduce the maximum radius to make it easier
             if failed_circle == 7:
                 high_radius = max(1, high_radius - 2)
-        return image
 
-
-if __name__ == "__main__":
-    generator = SparseGenerator()
-    image = generator.run()
-    image = image.transpose(2, 0, 1)
-    fig = plt.figure()
-    plt.subplot(2, 2, 1)
-    plt.title("Slice 2")
-    plt.imshow(image[2, :, :], cmap='gray')
-    plt.subplot(2, 2, 2)
-    plt.title(f"Slice {generator.img_pixels // 4}")
-    plt.imshow(image[generator.img_pixels // 4, :, :], cmap='gray')
-    plt.subplot(2, 2, 3)
-    plt.title(f"Slice {generator.img_pixels // 2}")
-    plt.imshow(image[generator.img_pixels // 2, :, :], cmap='gray')
-    plt.subplot(2, 2, 4)
-    plt.title(f"Slice {generator.img_pixels * 3 // 4}")
-    plt.imshow(image[(3 * generator.img_pixels) // 4, :, :], cmap='gray')
-    plt.savefig("phantom_diff_levels.png")
-    plt.show()
-    
-    fig = plt.figure()
-    cnt = 0
-    for i in [-1, 0, 1, 2]:
-        plt.subplot(2, 2, cnt + 1)
-        plt.title(f"Slice {i + (generator.img_pixels // 2)}")
-        plt.imshow(image[i + (generator.img_pixels // 2), :, :], cmap='gray')
-        cnt += 1
-    plt.savefig("phantom_seq.png")
-    plt.show()
+        # Save phantom
+        if overlap_flag:
+            np.save('./sparse_phantom_overlap.npy', phantom)
+        else:
+            np.save('./sparse_phantom.npy', phantom)

@@ -4,10 +4,30 @@ import matplotlib.pyplot as plt
 from collections import namedtuple
 
 
+####################################################################################################
+#                                             CONSTANTS                                            #
+####################################################################################################
+
 RADIUS_CYLINDER = 0.5
 CENTER_CYLINDER = (0.5, 0.5)
 
+# Set seed
+np.random.seed(42)
+
+####################################################################################################
+#                                             FUNCTIONS                                            #
+####################################################################################################
+
 class FoamGenerator:
+    '''
+        Generates a foam phantom by geometrically checking for disntance between center and radious
+        of each bubble and placing them where the bubble can fit.
+
+        Paramters:
+        - img_pixels: number of piels of the phantom
+        - num_spheres: number os small shperes (bubbles) inside the phantom
+        - prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
+    '''
     def __init__(self, img_pixels: int = 512, num_spheres: int = 1000, prob_overlap: float = 0):
         self.img_pixels = img_pixels
         self.num_spheres = num_spheres
@@ -62,12 +82,12 @@ class FoamGenerator:
                         im[x][y][z] = 0
         return im
 
-    def run(self):
-        image = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
+    def create_phantom(self, overlap_flag=False):
+        phantom = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
         sphere = namedtuple("sphere", ["center_x", "center_y", "center_z", "radius"])
     
         # Generate the big cylinder
-        image = self.cylinder(image, CENTER_CYLINDER, RADIUS_CYLINDER, intensity=1)
+        phantom = self.cylinder(phantom, CENTER_CYLINDER, RADIUS_CYLINDER, intensity=1)
     
         buffer = []
         generated_spheres = 0
@@ -85,7 +105,7 @@ class FoamGenerator:
     
             sphere_radius = np.random.uniform(low=min_radius, high=max_radius)
     
-            image = self.print_sphere(image, sphere_center, sphere_radius)
+            phantom = self.print_sphere(phantom, sphere_center, sphere_radius)
     
             sphere_ = sphere(sphere_center[0], sphere_center[1], sphere_center[2], sphere_radius)
             buffer.append(sphere_)
@@ -93,35 +113,9 @@ class FoamGenerator:
             generated_spheres += 1
             if generated_spheres % 1000 == 0:
                 print(f"Generated {generated_spheres} / {self.num_spheres} spheres")
-        return image
 
-
-if __name__ == "__main__":
-    generator = FoamGenerator()
-    image = generator.run()
-    image = image.transpose(2, 0, 1)
-    fig = plt.figure()
-    plt.subplot(2, 2, 1)
-    plt.title("Slice 2")
-    plt.imshow(image[2, :, :], cmap='gray')
-    plt.subplot(2, 2, 2)
-    plt.title(f"Slice {generator.img_pixels // 4}")
-    plt.imshow(image[generator.img_pixels // 4, :, :], cmap='gray')
-    plt.subplot(2, 2, 3)
-    plt.title(f"Slice {generator.img_pixels // 2}")
-    plt.imshow(image[generator.img_pixels // 2, :, :], cmap='gray')
-    plt.subplot(2, 2, 4)
-    plt.title(f"Slice {generator.img_pixels * 3 // 4}")
-    plt.imshow(image[(3 * generator.img_pixels) // 4, :, :], cmap='gray')
-    plt.savefig("phantom_diff_levels.png")
-    plt.show()
-
-    fig = plt.figure()
-    cnt = 0
-    for i in [-1, 0, 1, 2]:
-        plt.subplot(2, 2, cnt + 1)
-        plt.title(f"Slice {i + (generator.img_pixels // 2)}")
-        plt.imshow(image[i + (generator.img_pixels // 2), :, :], cmap='gray')
-        cnt += 1
-    plt.savefig("phantom_seq.png")
-    plt.show()
+        # Save phantom
+        if overlap_flag:
+            np.save('./foam_phantom_overlap.npy', phantom)
+        else:
+            np.save('./foam_phantom.npy', phantom)
