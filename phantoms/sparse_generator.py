@@ -19,12 +19,12 @@ np.random.seed(42)
 
 class SparseGenerator:
     '''
-        Generates a foam phantom with the sparse method. Placing each sphere randomly if it fits.
+        Generates and saves a foam phantom with the sparse method. Placing each sphere randomly
+        if it fits.
 
-        Paramters:
-        - img_pixels: number of piels of the phantom
-        - num_spheres: number os small shperes (bubbles) inside the phantom
-        - prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
+        :param img_pixels: number of piels of the phantom
+        :param num_spheres: number os small shperes (bubbles) inside the phantom
+        :param prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
     '''
     
     def __init__(self, img_pixels: int = 512, num_spheres: int = 1000, prob_overlap: float = 0):

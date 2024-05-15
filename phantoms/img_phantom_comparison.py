@@ -54,7 +54,7 @@ def plot_phantoms(image_sparse, image_foam, image_sparse_overlap, image_foam_ove
     plt.axis('off')
     
     plt.tight_layout()
-    plt.savefig("different_methods.png", dpi=600)
+    plt.savefig("./figures/img_phantom_comparison.png", dpi=600)
     plt.show()
 
 
