@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 ####################################################################################################
 #                                              CLASS                                               #
 ####################################################################################################
+
 class Sinogram:
     '''
         The Sinogram class provides a suite of methods for generating and processing sinograms.
