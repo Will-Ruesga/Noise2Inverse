@@ -66,3 +66,33 @@ class Sinogram:
         # Log transform to undo the exponential, and retain scale to range [0, max]
         self.sinogram[self.sinogram == 0] = 1
         self.sinogram = -np.log(self.sinogram / photon_count)
+
+    def add_gaussian_noise():
+        # TODO
+        ...
+        pass
+
+    def add_non_independent_noise():
+        # TODO
+        ...
+        pass
+
+    def add_non_zero_mean_noise():
+        # TODO
+        ...
+        pass
+
+    def add_undersampling_arifact():
+        # TODO
+        ...
+        pass
+
+    def add_ring_artifact():
+        # TODO
+        ...
+        pass
+
+    def add_zinger_artifact():
+        # TODO
+        ...
+        pass
