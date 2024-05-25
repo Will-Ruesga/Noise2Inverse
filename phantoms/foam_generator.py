@@ -1,3 +1,6 @@
+import sys
+import os
+
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
@@ -28,10 +31,12 @@ class FoamGenerator:
         :param num_spheres: number os small shperes (bubbles) inside the phantom
         :param prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
     '''
-    def __init__(self, img_pixels: int = 512, num_spheres: int = 1000, prob_overlap: float = 0):
+    def __init__(self, img_pixels: int = 256, num_spheres: int = 1000, prob_overlap: float = 0):
         self.img_pixels = img_pixels
         self.num_spheres = num_spheres
         self.prob_overlap = prob_overlap
+
+        self.phantom = None
 
     def cylinder(self, im: npt.NDArray, center, radius: float, intensity: float = 1):
         assert len(im.shape) == 3, "Image must be 3D"
@@ -44,6 +49,7 @@ class FoamGenerator:
         mask = dist_squared <= radius_pixels ** 2
         for z in range(zz):
             im[:, :, z][mask] = intensity
+
         return im
 
     @staticmethod
@@ -115,7 +121,11 @@ class FoamGenerator:
                 print(f"Generated {generated_spheres} / {self.num_spheres} spheres")
 
         # Save phantom
+        self.phantom = phantom.transpose(2, 0, 1)
+        os.makedirs('./phantoms/save', exist_ok=True)
         if overlap_flag:
             np.save('./phantoms/save/foam_phantom_overlap.npy', phantom)
         else:
             np.save('./phantoms/save/foam_phantom.npy', phantom)
+
+        return phantom

@@ -3,4 +3,6 @@
 .DS_Store?
 .vscode
 __pycache__/
-phantoms/*.npy
+phantoms/save/*.npy
+results.png
+noise2inverse.egg-info/

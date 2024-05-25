@@ -1,3 +1,20 @@
+## Install Noise2Inverse
+
+In the your environment run:
+
+```
+pip install -e .
+```
+
+TODO: Add the packages to install in the setup
+
+From the project root, run:
+
+```bash
+python3 noise2inverse/n2i.py
+```
+
+
 ## Phantom generation
 
 **Guillem Casals and Eduard Ruiz**
