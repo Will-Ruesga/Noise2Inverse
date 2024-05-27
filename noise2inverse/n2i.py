@@ -26,51 +26,83 @@ class N2I:
 
         :param sinogram: The sinogram in which the model will be trained
         """
+        # Set parameter values
         self.num_splits = num_splits
         self.network = None
         self.device = device
         self.network_name = network_name
         self.strategy = strategy
+        self.path_weights = "networks/weigths"
+
+        # Initialize the network
         self._initialize_network(self.network_name)
 
-    def generate_source_target_for_split(self, split_reconstructions, num_split):
-        source_reconstruction = []
-        target_reconstruction = []
-        list_indeces = list(range(len(split_reconstructions)))
+
+
+    def generate_source_target_for_split(self, split_recs, num_split):
+        """
+            This functions generates the source and terget split in 
+            order to perform a reconstruction.
+
+            :param split_recs: The reconstructions of the splits
+            :param num_split: Number of splits per reconstruction
+
+            :return: Source and target reconstructions
+        """
+
+        # Initiallize values
+        source_rec = []
+        target_rec = []
+        list_indeces = list(range(len(split_recs)))
         list_indeces.remove(num_split)
+
+        # Depending on the strategy we will perform a different split
         if self.strategy == "X:1":
-            source_reconstruction = np.mean(np.array([split_reconstructions[i] for i in list_indeces]), axis=0)
-            target_reconstruction = np.array(split_reconstructions[num_split])
+            source_rec = np.mean(np.array([split_recs[i] for i in list_indeces]), axis=0)
+            target_rec = np.array(split_recs[num_split])
+
         elif self.strategy == "1:X":
-            source_reconstruction = np.array(split_reconstructions[num_split])
-            target_reconstruction = np.mean(np.array([split_reconstructions[i] for i in list_indeces]), axis=0)
+            source_rec = np.array(split_recs[num_split])
+            target_rec = np.mean(np.array([split_recs[i] for i in list_indeces]), axis=0)
+
+        # If the strategy is invalid, return error
         else:
             raise ValueError("Invalid source_imgs value")
-        source_reconstruction = torch.tensor(source_reconstruction).float()
-        target_reconstruction = torch.tensor(target_reconstruction).float()
-        return source_reconstruction, target_reconstruction
+        
+        # Convert to tensor floats
+        source_rec = torch.tensor(source_rec).float()
+        target_rec = torch.tensor(target_rec).float()
+
+        return source_rec, target_rec
+
+
 
     def Train(self, input, epochs: int, batch_size: int, learning_rate: float):
         """
         Train the model with the provided training data.
 
+        :param input: Input data for the network train
         :param epochs: Number of epochs to train the model
         :param batch_size: Size of the batches for each training step
         :param learning_rate: Learning rate for the optimizer
         """
+
+        # Get the optimizer and Scaler
         optimizer = self._get_optimizer(learning_rate)
         scaler = torch.cuda.amp.GradScaler()  # Use GradScaler for mixed precision training
-        weights_path = "networks/weigths"
-        os.makedirs(weights_path, exist_ok=True)
 
+        # Make sure the path for the weights exists
+        os.makedirs(self.path_weights, exist_ok=True)
+
+        # Epoch training loop
         for epoch in range(epochs):
             self.network.train()
             epoch_loss = 0
             for k in range(self.num_splits):
                 slices_pred = []
-                source_reconstructions, target_reconstructions = self.generate_source_target_for_split(input, k)
-                for i in range(0, source_reconstructions.shape[1], batch_size):
-                    batch_slices = source_reconstructions[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
+                source_recs, target_recs = self.generate_source_target_for_split(input, k)
+                for i in range(0, source_recs.shape[1], batch_size):
+                    batch_slices = source_recs[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
                     
                     with torch.cuda.amp.autocast():
                         batch_predictions = self.network(batch_slices)
@@ -81,25 +113,30 @@ class N2I:
                 slices_pred = torch.cat(slices_pred, dim=0).to(self.device, dtype=torch.float16)
 
                 with torch.cuda.amp.autocast():
-                    target_reconstructions = target_reconstructions.to(self.device, dtype=torch.float16)
-                    loss = torch.nn.functional.mse_loss(slices_pred, target_reconstructions)
+                    target_recs = target_recs.to(self.device, dtype=torch.float16)
+                    loss = torch.nn.functional.mse_loss(slices_pred, target_recs)
                     epoch_loss += loss.item()
 
+                # Update optimazer and scaler
                 optimizer.zero_grad()
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
 
+            # Print progress and loss and save network weights each epoch
             print(f"Epoch {epoch+1} / {epochs} | Loss: {round(epoch_loss, 4)}")
-            torch.save(self.network.state_dict(), weights_path + f"/weights.pth")
+            torch.save(self.network.state_dict(), self.path_weights + f"/weights.pth")
 
 
 
     def Evaluate(self, input, batch_size: int = 8):
         """
-        Evaluate the model with the provided validation data.
+        Evaluate the model with the provided  data.
+        
+        :param input: The image to denoise
+        :param batch_size: Size of the batches for each training step
 
-        :return: Evaluation metrics
+        :return: Denoised image of the pahntom
         """
 
         self.network.eval()
@@ -109,9 +146,9 @@ class N2I:
         with torch.no_grad():
             for k in range(self.num_splits):
                 slices_pred = []
-                source_reconstructions, _ = self.generate_source_target_for_split(input, k)
-                for i in range(0, source_reconstructions.shape[1], batch_size):
-                    batch_slices = source_reconstructions[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
+                source_recs, _ = self.generate_source_target_for_split(input, k)
+                for i in range(0, source_recs.shape[1], batch_size):
+                    batch_slices = source_recs[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
                     
                     with torch.cuda.amp.autocast():
                         batch_predictions = self.network(batch_slices)
@@ -127,24 +164,17 @@ class N2I:
         
 
     def load_weights(self, weights_path):
+        """
+            Loads saved weights from the desired path.
+        """
         self.network.load_state_dict(torch.load(weights_path))
 
-    # def _get_batches(self, data, batch_size):
-    #     """
-    #     Helper function to create batches from data.
-
-    #     :param data: The data to be batched
-    #     :param batch_size: The size of each batch
-    #     :return: A generator yielding batches of data
-    #     """
-    #     for i in range(0, len(data), batch_size):
-    #         yield data[i:i + batch_size]
 
     def _initialize_network(self, network_name):
         """
         Helper function to initialize the neural network.
 
-        :param network: The name of the network to use
+        :param network_name: The name of the network to use
         """
         # Replace with your network initialization code
         if network_name == "unet":
@@ -154,9 +184,10 @@ class N2I:
 
     def _get_optimizer(self, learning_rate=0.001):
         """
-        Helper function to create an optimizer.
+        Helper function to create an optimizer. (Adam)
 
         :param learning_rate: Learning rate for the optimizer
+
         :return: An optimizer instance
         """
         return torch.optim.Adam(self.network.parameters(), lr=learning_rate)
@@ -181,7 +212,7 @@ if __name__ == "__main__":
     n2i = N2I(network_name="unet", device=device, num_splits=4)
     n2i.Train(reconstructions, epochs=100, batch_size=8, learning_rate=0.001)
 
-    # # Evaluate model
+    # Evaluate model
     denoised_phantom = n2i.Evaluate(reconstructions)
 
     plt.figure()

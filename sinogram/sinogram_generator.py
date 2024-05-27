@@ -61,38 +61,38 @@ class Sinogram:
         split_data = np.array(split_data)
         self.split_sinograms = split_data.transpose(1, 0, 2, 3)
 
-    def reconstruct(self, sinogram, rec_algorithm: str = 'FBP_CUDA'):
-        reconstruction = []
-        angles = np.linspace(0, np.pi, self.num_proj, False)
-        for proj in sinogram:
-            pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
-            sinogram_id = astra.data2d.create('-sino', pg, proj)
-            recon_id = astra.data2d.create('-vol', self.vg, 0)
+    # def reconstruct(self, sinogram, rec_algorithm: str = 'FBP_CUDA'):
+    #     reconstruction = []
+    #     angles = np.linspace(0, np.pi, self.num_proj, False)
+    #     for proj in sinogram:
+    #         pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
+    #         sinogram_id = astra.data2d.create('-sino', pg, proj)
+    #         recon_id = astra.data2d.create('-vol', self.vg, 0)
 
-            # Create the algorithm
-            config = astra.astra_dict(rec_algorithm)
-            config['ReconstructionDataId'] = recon_id
-            config['ProjectionDataId'] = sinogram_id
-            alg_id = astra.algorithm.create(config)
+    #         # Create the algorithm
+    #         config = astra.astra_dict(rec_algorithm)
+    #         config['ReconstructionDataId'] = recon_id
+    #         config['ProjectionDataId'] = sinogram_id
+    #         alg_id = astra.algorithm.create(config)
 
-            # Run the reconstruction and store the result
-            astra.algorithm.run(alg_id, self.num_iter)
-            rec = astra.data2d.get(recon_id)
-            reconstruction.append(rec)
+    #         # Run the reconstruction and store the result
+    #         astra.algorithm.run(alg_id, self.num_iter)
+    #         rec = astra.data2d.get(recon_id)
+    #         reconstruction.append(rec)
 
-            # Clean up the memory
-            astra.algorithm.delete(alg_id)
-            astra.data2d.delete(recon_id)
-            astra.data2d.delete(sinogram_id)
-        return reconstruction
+    #         # Clean up the memory
+    #         astra.algorithm.delete(alg_id)
+    #         astra.data2d.delete(recon_id)
+    #         astra.data2d.delete(sinogram_id)
+    #     return reconstruction
     
     def reconstruct_splits(self, sinograms: list, rec_algorithm: str = 'FBP_CUDA'):
         """
         Reconstruct the sinogram from the data provided.
         """
-        reconstructions = []
+        rec = []
         for k_split, sino in enumerate(sinograms):
-            reconstructions_split = []
+            rec_split = []
             angles = np.linspace(np.pi / self.num_proj * k_split, np.pi, self.num_proj // self.num_splits, False)
             for proj in sino:
                 pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
@@ -108,14 +108,14 @@ class Sinogram:
                 # Run the reconstruction and store the result
                 astra.algorithm.run(alg_id, self.num_iter)
                 rec = astra.data2d.get(recon_id)
-                reconstructions_split.append(rec)
+                rec_split.append(rec)
 
                 # Clean up the memory
                 astra.algorithm.delete(alg_id)
                 astra.data2d.delete(recon_id)
                 astra.data2d.delete(sinogram_id)
-            reconstructions.append(np.array(reconstructions_split))
-        return reconstructions
+            rec.append(np.array(rec_split))
+        return rec
 
     def add_poisson_noise(self, attenuation: float, photon_count: int):
         """
