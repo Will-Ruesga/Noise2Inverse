@@ -77,11 +77,11 @@ class N2I:
 
 
 
-    def Train(self, input, epochs: int, batch_size: int, learning_rate: float):
+    def Train(self, rec_input, epochs: int, batch_size: int, learning_rate: float):
         """
         Train the model with the provided training data.
 
-        :param input: Input data for the network train
+        :param rec_input: Input data of the reconstruction for trianing the network
         :param epochs: Number of epochs to train the model
         :param batch_size: Size of the batches for each training step
         :param learning_rate: Learning rate for the optimizer
@@ -100,10 +100,11 @@ class N2I:
             epoch_loss = 0
             for k in range(self.num_splits):
                 slices_pred = []
-                source_recs, target_recs = self.generate_source_target_for_split(input, k)
+                source_recs, target_recs = self.generate_source_target_for_split(rec_input, k)
                 for i in range(0, source_recs.shape[1], batch_size):
                     batch_slices = source_recs[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
                     
+                    # Use 16 byte to reduce comptutational load
                     with torch.cuda.amp.autocast():
                         batch_predictions = self.network(batch_slices)
                         slices_pred.append(batch_predictions.squeeze().cpu())
@@ -111,7 +112,8 @@ class N2I:
                     torch.cuda.empty_cache()
 
                 slices_pred = torch.cat(slices_pred, dim=0).to(self.device, dtype=torch.float16)
-
+                
+                # Use 16 byte to reduce comptutational load
                 with torch.cuda.amp.autocast():
                     target_recs = target_recs.to(self.device, dtype=torch.float16)
                     loss = torch.nn.functional.mse_loss(slices_pred, target_recs)
@@ -129,11 +131,11 @@ class N2I:
 
 
 
-    def Evaluate(self, input, batch_size: int = 8):
+    def Evaluate(self, rec_input, batch_size: int = 8):
         """
-        Evaluate the model with the provided  data.
+        Extract from the denoised reconstruction from the network.
         
-        :param input: The image to denoise
+        :param rec_input: Input data of the reconstruction to evaluate
         :param batch_size: Size of the batches for each training step
 
         :return: Denoised image of the pahntom
@@ -146,7 +148,7 @@ class N2I:
         with torch.no_grad():
             for k in range(self.num_splits):
                 slices_pred = []
-                source_recs, _ = self.generate_source_target_for_split(input, k)
+                source_recs, _ = self.generate_source_target_for_split(rec_input, k)
                 for i in range(0, source_recs.shape[1], batch_size):
                     batch_slices = source_recs[i:i+batch_size, None, ...].to(self.device, dtype=torch.float16)
                     
@@ -193,44 +195,44 @@ class N2I:
         return torch.optim.Adam(self.network.parameters(), lr=learning_rate)
 
 
-if __name__ == "__main__":
-    # Generate sinogram
-    foam_generator = FoamGenerator(img_pixels=256, num_spheres=1000, prob_overlap=0)
-    foam = foam_generator.create_phantom()
+# if __name__ == "__main__":
+#     # Generate sinogram
+#     foam_generator = FoamGenerator(img_pixels=256, num_spheres=1000, prob_overlap=0)
+#     foam = foam_generator.create_phantom()
 
-    sinogram = Sinogram(foam, num_proj=1024, num_iter=200)
-    sinogram.generate()
-    sinogram.add_poisson_noise(attenuation=100, photon_count=1000)
-    proj_data = sinogram.sinogram
-    sinogram.split_data(num_splits=4)
-    split_sinograms = sinogram.split_sinograms
-    reconstructions = sinogram.reconstruct_splits(split_sinograms, rec_algorithm='FBP_CUDA')
-    reconstruction_noisy = sinogram.reconstruct(proj_data, rec_algorithm='FBP_CUDA')
+#     sinogram = Sinogram(foam, num_proj=1024, num_iter=200)
+#     sinogram.generate()
+#     sinogram.add_poisson_noise(attenuation=100, photon_count=1000)
+#     proj_data = sinogram.sinogram
+#     sinogram.split_data(num_splits=4)
+#     split_sinograms = sinogram.split_sinograms
+#     reconstructions = sinogram.reconstruct_splits(split_sinograms, rec_algorithm='FBP_CUDA')
+#     reconstruction_noisy = sinogram.reconstruct(proj_data, rec_algorithm='FBP_CUDA')
 
-    # Train model
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    n2i = N2I(network_name="unet", device=device, num_splits=4)
-    n2i.Train(reconstructions, epochs=100, batch_size=8, learning_rate=0.001)
+#     # Train model
+#     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#     n2i = N2I(network_name="unet", device=device, num_splits=4)
+#     n2i.Train(reconstructions, epochs=100, batch_size=8, learning_rate=0.001)
 
-    # Evaluate model
-    denoised_phantom = n2i.Evaluate(reconstructions)
+#     # Evaluate model
+#     denoised_phantom = n2i.Evaluate(reconstructions)
 
-    plt.figure()
-    plt.subplot(1, 4, 1)
-    plt.imshow(foam[128], cmap='gray')
-    plt.axis('off')
-    plt.title("Original")
-    plt.subplot(1, 4, 2)
-    plt.imshow(reconstruction_noisy[128], cmap='gray', vmin=0, vmax=1/100)
-    plt.axis('off')
-    plt.title("Noisy")
-    plt.subplot(1, 4, 3)
-    plt.imshow(denoised_phantom.cpu().numpy()[128], cmap='gray', vmin=0, vmax=1/100)
-    plt.axis('off')
-    plt.title("Denoised")
-    plt.savefig("results.png")
-    plt.subplot(1, 4, 3)
-    plt.imshow(denoised_phantom.cpu().numpy()[128], cmap='gray')
-    plt.axis('off')
-    plt.title("Denoised full")
-    plt.savefig("results.png")
+#     plt.figure()
+#     plt.subplot(1, 4, 1)
+#     plt.imshow(foam[128], cmap='gray')
+#     plt.axis('off')
+#     plt.title("Original")
+#     plt.subplot(1, 4, 2)
+#     plt.imshow(reconstruction_noisy[128], cmap='gray', vmin=0, vmax=1/100)
+#     plt.axis('off')
+#     plt.title("Noisy")
+#     plt.subplot(1, 4, 3)
+#     plt.imshow(denoised_phantom.cpu().numpy()[128], cmap='gray', vmin=0, vmax=1/100)
+#     plt.axis('off')
+#     plt.title("Denoised")
+#     plt.savefig("results.png")
+#     plt.subplot(1, 4, 3)
+#     plt.imshow(denoised_phantom.cpu().numpy()[128], cmap='gray')
+#     plt.axis('off')
+#     plt.title("Denoised full")
+#     plt.savefig("results.png")
