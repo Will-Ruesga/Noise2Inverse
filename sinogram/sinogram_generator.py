@@ -160,10 +160,27 @@ class Sinogram:
         ...
         pass
 
-    def add_non_independent_noise():
-        # TODO
-        ...
-        pass
+    def add_non_independent_noise(self, non_ind_noise, attenuation):
+        """
+            Adds the non-independent noise to the sinogram with the desired
+            attenuation.
+
+            :param non_ind_noise: Noise wave to add.
+            :param attenuation: Attenuation factor for the wave.
+
+            # :return: Modified sinogram with the noise added.
+        """
+
+        # Apply attenuation
+        att_noise = non_ind_noise * attenuation
+        
+        # Add the non-independent noise
+        noised_sin = self.sinogram.astype(np.float32) + att_noise.astype(np.float32)
+
+        # Normalize the combined image to fit within 0-1
+        self.sinogram = (noised_sin - np.min(noised_sin)) / (np.max(noised_sin) - np.min(noised_sin))
+        
+        # return noised_sin
 
     def add_non_zero_mean_noise():
         # TODO
