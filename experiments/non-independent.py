@@ -3,7 +3,14 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+import sys
+sys.path.append('C:\\Users\\wilru\\Documents\\LU\\S4\\CITO\\Noise2Inverse\\sinogram')
+print("In module products sys.path[0], __package__ ==", sys.path, __package__)
+
 from sinogram.sinogram_generator import Sinogram
+
+
+# from sinogram.sinogram_generator import Sinogram
 from noise2inverse.n2i import N2I
 
 ####################################################################################################

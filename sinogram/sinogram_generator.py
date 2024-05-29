@@ -13,6 +13,7 @@ class Sinogram:
         Adds the Gaussian or Poisson noise based on the hyperprameters.
     '''
 
+
     def __init__(self, phantom, num_proj: int = 1024, num_iter: int = 200):
 
         # Prjoection variables
@@ -34,6 +35,7 @@ class Sinogram:
         self.split_sinograms = []
 
 
+    ####################################################################################################
     def generate(self):
         """
         Creates volume and projection geometry in order to generate the sinogram.
@@ -48,6 +50,8 @@ class Sinogram:
         astra.projector.delete(pid)
         self.sinogram = pdata
 
+
+    ####################################################################################################
     def split_data(self, num_splits: int):
         """
         Create a list of sinograms with the data split in num_splits parts.
@@ -60,6 +64,8 @@ class Sinogram:
         split_data = np.array(split_data)
         self.split_sinograms = split_data.transpose(1, 0, 2, 3)
 
+
+    ####################################################################################################
     def reconstruct(self, rec_algorithm: str = 'FBP_CUDA'):
         """
         Performs the sinogram reconstruction.
@@ -93,6 +99,8 @@ class Sinogram:
             astra.data2d.delete(sinogram_id)
         return reconstruction
     
+
+    ####################################################################################################
     def reconstruct_splits(self, sinograms: list, rec_algorithm: str = 'FBP_CUDA'):
         """
         Reconstruction of each k split made from the sinogram.
@@ -129,6 +137,9 @@ class Sinogram:
             rec.append(np.array(rec_split))
         return rec
 
+
+
+    ####################################################################################################
     def add_poisson_noise(self, attenuation: float, photon_count: int):
         """
         Generate a noisy sinogram from a sinogram with Poisson noise with
@@ -155,9 +166,20 @@ class Sinogram:
         self.sinogram[self.sinogram == 0] = 1
         self.sinogram = -np.log(self.sinogram / photon_count)
 
+
+    ####################################################################################################
     def add_gaussian_noise(self, std: float = 1):
+        """
+        Generate a noisy sinogram from a sinogram with Gaussian noise
+        with mean (sigma) 0.
+
+        :param std: Standard deviation.
+        """
+        # Sum the Gaussian noise to the sinogram
         self.sinogram += np.random.normal(0, std, self.sinogram.shape)
 
+
+    ####################################################################################################
     def add_non_independent_noise(self, non_ind_noise, attenuation):
         """
             Adds the non-independent noise to the sinogram with the desired
@@ -165,10 +187,7 @@ class Sinogram:
 
             :param non_ind_noise: Noise wave to add.
             :param attenuation: Attenuation factor for the wave.
-
-            # :return: Modified sinogram with the noise added.
         """
-
         # Apply attenuation
         att_noise = non_ind_noise * attenuation
         
@@ -177,23 +196,38 @@ class Sinogram:
 
         # Normalize the combined image to fit within 0-1
         self.sinogram = (noised_sin - np.min(noised_sin)) / (np.max(noised_sin) - np.min(noised_sin))
-        
-        # return noised_sin
 
+
+    ####################################################################################################
     def add_non_zero_mean_noise(self, std_mean: float = 0.5, std: float = 1):
+        """
+            Adds the non-zero mean (Gaussian) noise to the sinogram.
+
+            :param std_mean: Mean of the Standard deviation.
+            :param std: Standard deviation.
+        """
+        # Generate non zero mean gaussian noise
         mean_array = np.random.normal(0, std_mean, self.sinogram.shape)
+
+        # Add it to sinogram
         self.sinogram += np.random.normal(mean_array, std, self.sinogram.shape)
 
+
+    ####################################################################################################
     def add_undersampling_arifact():
         # TODO
         ...
         pass
 
+
+    ####################################################################################################
     def add_ring_artifact():
         # TODO
         ...
         pass
 
+
+    ####################################################################################################
     def add_zinger_artifact():
         # TODO
         ...
