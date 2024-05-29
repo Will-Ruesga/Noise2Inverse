@@ -60,7 +60,7 @@ class Sinogram:
         split_data = np.array(split_data)
         self.split_sinograms = split_data.transpose(1, 0, 2, 3)
 
-    def reconstruct(self, sinogram, rec_algorithm: str = 'FBP_CUDA'):
+    def reconstruct(self, rec_algorithm: str = 'FBP_CUDA'):
         """
         Performs the sinogram reconstruction.
 
@@ -71,7 +71,7 @@ class Sinogram:
         """
         reconstruction = []
         angles = np.linspace(0, np.pi, self.num_proj, False)
-        for proj in sinogram:
+        for proj in self.sinogram:
             pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
             sinogram_id = astra.data2d.create('-sino', pg, proj)
             recon_id = astra.data2d.create('-vol', self.vg, 0)
@@ -85,7 +85,7 @@ class Sinogram:
             # Run the reconstruction and store the result
             astra.algorithm.run(alg_id, self.num_iter)
             rec = astra.data2d.get(recon_id)
-            reconstruction.append(rec)
+            reconstruction.append(rec[::-1])
 
             # Clean up the memory
             astra.algorithm.delete(alg_id)
@@ -155,20 +155,17 @@ class Sinogram:
         self.sinogram[self.sinogram == 0] = 1
         self.sinogram = -np.log(self.sinogram / photon_count)
 
-    def add_gaussian_noise():
-        # TODO
-        ...
-        pass
+    def add_gaussian_noise(self, std: float = 1):
+        self.sinogram += np.random.normal(0, std, self.sinogram.shape)
 
     def add_non_independent_noise():
         # TODO
         ...
         pass
 
-    def add_non_zero_mean_noise():
-        # TODO
-        ...
-        pass
+    def add_non_zero_mean_noise(self, std_mean: float = 0.5, std: float = 1):
+        mean_array = np.random.normal(0, std_mean, self.sinogram.shape)
+        self.sinogram += np.random.normal(mean_array, std, self.sinogram.shape)
 
     def add_undersampling_arifact():
         # TODO
