@@ -221,14 +221,36 @@ class Sinogram:
 
 
     ####################################################################################################
-    def add_ring_artifact():
-        # TODO
-        ...
-        pass
+    def add_ring_artifact(self, position: int, offset: float = 0.5):
+        """
+            Adds a line artifact to the sinogram.
 
+            :param position: The column index in the sinogram where the artifact will be added.
+            :param intensity: The intensity of the artifact.
+        """
+        # Add the ring artifact
+        self.sinogram[position, :] += offset
 
     ####################################################################################################
-    def add_zinger_artifact():
-        # TODO
-        ...
-        pass
+    def add_zinger_artifact(self, num_zingers, intensity):
+        """
+            Adds zinger artifacts to the sinogram.
+
+            Parameters:
+            num_zingers (int): The number of zinger artifacts to add.
+            intensity (float): The intensity of the zinger artifacts.
+
+            Returns:
+            ndarray: The sinogram with the added zinger artifacts.
+        """
+        # Get the dimensions of the sinogram
+        rows, cols = self.sinogram.shape
+
+        # Add zinger artifacts at random positions
+        for _ in range(num_zingers):
+            # Randomly select a position in the sinogram
+            row = np.random.randint(0, rows)
+            col = np.random.randint(0, cols)
+            
+            # Add the intensity to create the zinger artifact
+            self.sinogram[row, col] += intensity
