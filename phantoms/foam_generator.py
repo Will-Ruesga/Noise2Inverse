@@ -121,7 +121,8 @@ class FoamGenerator:
                 print(f"Generated {generated_spheres} / {self.num_spheres} spheres")
 
         # Save phantom
-        self.phantom = phantom.transpose(2, 0, 1)
+        phantom = phantom.transpose(2, 0, 1)
+        self.phantom = phantom
         os.makedirs('./phantoms/save', exist_ok=True)
         if overlap_flag:
             np.save('./phantoms/save/foam_phantom_overlap.npy', phantom)

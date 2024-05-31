@@ -110,7 +110,7 @@ class Sinogram:
 
         :return: A list of reconstructions that correspond to each sinogram split
         """
-        rec = []
+        reconstruction = []
         for k_split, sino in enumerate(sinograms):
             rec_split = []
             angles = np.linspace(np.pi / self.num_proj * k_split, np.pi, self.num_proj // self.num_splits, False)
@@ -134,8 +134,8 @@ class Sinogram:
                 astra.algorithm.delete(alg_id)
                 astra.data2d.delete(recon_id)
                 astra.data2d.delete(sinogram_id)
-            rec.append(np.array(rec_split))
-        return rec
+            reconstruction.append(np.array(rec_split))
+        return reconstruction
 
 
 
