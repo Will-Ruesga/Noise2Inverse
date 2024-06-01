@@ -2,6 +2,7 @@ import astra
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 from sinogram.sinogram_generator import Sinogram
 from noise2inverse.n2i import N2I
