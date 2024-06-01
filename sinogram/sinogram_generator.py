@@ -175,7 +175,7 @@ class Sinogram:
 
         # Compute and save absortion
         self.absorption = 1 - np.mean(np.exp(-self.sinogram[self.sinogram > 0]))
-        print("Absorption: ", self.absorption)
+        print(f"\n\n Absorption: {self.absorption}")
         
         # Add Poisson noise with the photon count desired
         self.sinogram = np.random.poisson(photon_count * np.exp(-self.sinogram))
