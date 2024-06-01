@@ -80,12 +80,17 @@ class Sinogram:
 
         :return: The reconstruction of the sinogram
         """
+        # Initalize angles and volume geometry
         reconstruction = []
         angles = np.linspace(0, np.pi, self.num_proj, False)
+        vg = astra.create_vol_geom(self.phantom.shape[1:])
+
+        # For each slice
         for proj in self.sinogram:
+            # Create projection geometry and ids for sinogram and reconstruction
             pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
             sinogram_id = astra.data2d.create('-sino', pg, proj)
-            recon_id = astra.data2d.create('-vol', self.vg, 0)
+            recon_id = astra.data2d.create('-vol', vg, 0)
 
             # Create the algorithm
             config = astra.astra_dict(rec_algorithm)
@@ -115,14 +120,22 @@ class Sinogram:
 
         :return: A list of reconstructions that correspond to each sinogram split
         """
+        # Initialize volume geometry 
         reconstruction = []
+        vg = astra.create_vol_geom(self.phantom.shape[1:])
+
+        # For each split
         for k_split, sino in enumerate(sinograms):
+            # Generate angles
             rec_split = []
             angles = np.linspace(np.pi / self.num_proj * k_split, np.pi, self.num_proj // self.num_splits, False)
+
+            # For each slice
             for proj in sino:
+                # Create projection geometry and ids for sinogram and reconstruction
                 pg = astra.create_proj_geom('parallel', 1.0, self.detector_shape[1], angles)
                 sinogram_id = astra.data2d.create('-sino', pg, proj)
-                recon_id = astra.data2d.create('-vol', self.vg, 0)
+                recon_id = astra.data2d.create('-vol', vg, 0)
 
                 # Create the algorithm
                 config = astra.astra_dict(rec_algorithm)
