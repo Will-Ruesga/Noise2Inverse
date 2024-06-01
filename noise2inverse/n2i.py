@@ -305,7 +305,7 @@ class N2I:
 #     plt.axis('off')
 #     plt.title("Noisy")
 #     plt.subplot(1, 4, 3)
-#     denoised_phantom = denoised_phantom.cpu().numpy()[:,::-1]
+#     denoised_phantom = denoised_phantom.cpu().numpy()
 #     plt.imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=1/ATTENUATION)
 #     plt.axis('off')
 #     plt.title("Denoised")

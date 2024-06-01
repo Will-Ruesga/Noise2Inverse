@@ -56,10 +56,16 @@ class Sinogram:
         """
         Create a list of sinograms with the data split in num_splits parts.
         """
+        # Initialize
+        split_data = []
         self.num_splits = num_splits
+
+        # Generate K splits of the sinogram
         for proj in self.sinogram:
             proj_in_splits = np.array([proj[i::num_splits] for i in range(num_splits)])
             split_data.append(proj_in_splits)
+
+        # Save the splits
         split_data = np.array(split_data)
         self.split_sinograms = split_data.transpose(1, 0, 2, 3)
 
@@ -127,7 +133,7 @@ class Sinogram:
                 # Run the reconstruction and store the result
                 astra.algorithm.run(alg_id, self.num_iter)
                 rec = astra.data2d.get(recon_id)
-                rec_split.append(rec)
+                rec_split.append(rec[::-1])
 
                 # Clean up the memory
                 astra.algorithm.delete(alg_id)
