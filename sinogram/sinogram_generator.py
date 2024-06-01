@@ -171,7 +171,7 @@ class Sinogram:
         self.photon_count = photon_count
 
         # Apply attenuation to sinogram
-        self.sinogram = self.sinogram / attenuation
+        self.sinogram = self.sinogram * attenuation
 
         # Compute and save absortion
         self.absorption = 1 - np.mean(np.exp(-self.sinogram[self.sinogram > 0]))
@@ -183,6 +183,7 @@ class Sinogram:
         # Log transform to undo the exponential, and retain scale to range [0, max]
         self.sinogram[self.sinogram == 0] = 1
         self.sinogram = -np.log(self.sinogram / photon_count)
+        self.sinogram = self.sinogram / attenuation
 
 
     ####################################################################################################

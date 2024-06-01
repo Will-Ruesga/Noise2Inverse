@@ -108,10 +108,12 @@ class N2I:
     def plot_status(self, output, target, epoch, k_split=None, eval=False, sl: int = 128):
         plt.figure()
         plt.subplot(1, 2, 1)
-        plt.imshow(output[sl].cpu().detach(), cmap='gray', vmin=0, vmax=1/ATTENUATION)
+        # VMAX = 1/ATTENUATION
+        VMAX = 0.004
+        plt.imshow(output[sl].cpu().detach(), cmap='gray', vmin=0, vmax=VMAX)
         plt.title("Network output")
         plt.subplot(1, 2, 2)
-        plt.imshow(target[sl].cpu().detach(), cmap='gray', vmin=0, vmax=1/ATTENUATION)
+        plt.imshow(target[sl].cpu().detach(), cmap='gray', vmin=0, vmax=VMAX)
         plt.title("Network target")
         if eval:
             os.makedirs(f"{self.dir}/figures_eval", exist_ok=True)
@@ -125,7 +127,7 @@ class N2I:
         for k in range(self.num_splits):
             plt.plot(losses_split[k], label=f"Split {k}")
         plt.plot(np.array(epoch_losses)/self.num_splits, label="Split avg")
-        plt.plot(np.arange(0, self.epochs, 10), eval_losses, label="Evaluation")
+        plt.plot(np.arange(0, self.epochs, 5), eval_losses, label="Evaluation")
         plt.title(f"Losses {self.network_name} - lr: {self.lr} epochs: {self.epochs}")
         plt.yscale("log")
         plt.legend()
@@ -169,12 +171,11 @@ class N2I:
 
                 slices_pred = torch.cat(slices_pred, dim=0).to(self.device, dtype=torch.float32)
                 if epoch % 20 == 0:
-                    import pdb; pdb.set_trace()
                     self.plot_status(slices_pred, target_recs, epoch, k, eval=False)
                 
                 target_recs = target_recs.to(self.device, dtype=torch.float32)
                 # loss = (slices_pred - target_recs).mean()
-                loss = torch.nn.functional.l1_loss(slices_pred, target_recs)
+                loss = torch.nn.functional.mse_loss(slices_pred, target_recs)
                 epoch_loss += loss.item()
 
                 # Update optimizer and scaler
@@ -193,7 +194,7 @@ class N2I:
             print(f"Epoch {epoch+1} / {self.epochs} | Loss: {epoch_loss}")
             torch.save(self.network.state_dict(), f"{self.dir}/weights.pth")
             epoch_losses.append(epoch_loss)
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
                 assert original_image is not None, "Original image is required for evaluation"
                 denoised_image = self.Evaluate(rec_input)
                 with torch.no_grad():
