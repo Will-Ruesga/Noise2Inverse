@@ -4,6 +4,5 @@
 .vscode
 __pycache__/
 phantoms/save/*.npy
-results.png
 noise2inverse.egg-info/
-networks/weights/.pth
+runs/

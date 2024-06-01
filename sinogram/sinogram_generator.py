@@ -57,7 +57,6 @@ class Sinogram:
         Create a list of sinograms with the data split in num_splits parts.
         """
         self.num_splits = num_splits
-        split_data = []
         for proj in self.sinogram:
             proj_in_splits = np.array([proj[i::num_splits] for i in range(num_splits)])
             split_data.append(proj_in_splits)
