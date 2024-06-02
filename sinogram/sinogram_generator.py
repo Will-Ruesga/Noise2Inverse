@@ -171,7 +171,8 @@ class Sinogram:
         self.photon_count = photon_count
 
         # Apply attenuation to sinogram
-        self.sinogram = self.sinogram * attenuation
+        # self.sinogram = self.sinogram * (1 - attenuation)
+        self.sinogram = self.sinogram / attenuation
 
         # Compute and save absortion
         self.absorption = 1 - np.mean(np.exp(-self.sinogram[self.sinogram > 0]))
@@ -183,7 +184,7 @@ class Sinogram:
         # Log transform to undo the exponential, and retain scale to range [0, max]
         self.sinogram[self.sinogram == 0] = 1
         self.sinogram = -np.log(self.sinogram / photon_count)
-        self.sinogram = self.sinogram / attenuation
+        # self.sinogram = self.sinogram / (1 - attenuation)
 
 
     ####################################################################################################
@@ -226,7 +227,8 @@ class Sinogram:
             :param std: Standard deviation.
         """
         # Generate non zero mean gaussian noise
-        mean_array = np.random.normal(0, std_mean, self.sinogram.shape)
+        # mean_array = np.random.normal(0, std_mean, self.sinogram.shape)
+        mean_array = np.random.uniform(-std_mean, std_mean, self.sinogram.shape)
 
         # Add it to sinogram
         self.sinogram += np.random.normal(mean_array, std, self.sinogram.shape)

@@ -78,12 +78,14 @@ class N2I:
 
             :return: Source and target reconstructions
         """
-
         # Initiallize values
         source_rec = []
         target_rec = []
-        list_indeces = list(range(len(split_recs)))
-        list_indeces.remove(num_split)
+        try:
+            list_indeces = list(range(len(split_recs)))
+            list_indeces.remove(num_split)
+        except:
+            import pdb; pdb.set_trace()
 
         # Depending on the strategy we will perform a different split
         if self.strategy == "X:1":
@@ -257,7 +259,7 @@ class N2I:
         if network_name == "unet":
             self.network = UNet(1, 1, n_features=16).to(self.device)
         elif network_name == "dncnn":
-            self.network = DnCNN(1, num_of_layers=6).to(self.device)
+            self.network = DnCNN(1, num_of_layers=8).to(self.device)
         else:
             raise ValueError(f"Invalid network name: {network_name}")
 
