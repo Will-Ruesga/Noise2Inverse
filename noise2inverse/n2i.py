@@ -177,7 +177,7 @@ class N2I:
         :param target: The target image
         """
         psnr_method = PeakSignalNoiseRatio()
-        psnr_denoised = psnr_method(input, self.phantom)
+        psnr_denoised = psnr_method(input.cpu(), self.phantom)
         psnr_noisy = psnr_method(noisy_reconstruction, self.phantom)
 
         print(f"Denoised PSNR: {psnr_denoised}")
@@ -232,16 +232,16 @@ class N2I:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if epoch == 0:
+                if epoch == 1:
                     losses_split[k] = [loss.item()]
                 else:
                     losses_split[k].append(loss.item())
 
             # Print progress and loss and save network weights each epoch
-            print(f"Epoch {epoch+1} / {self.epochs} | Loss: {epoch_loss}")
+            print(f"Epoch {epoch} / {self.epochs} | Loss: {epoch_loss}")
             torch.save(self.network.state_dict(), f"{self.dir}/weights.pth")
             if epoch % 5 == 0 or epoch == 1:
-                denoised_image = self.Evaluate(rec_input)
+                denoised_image = self.Evaluate(rec_input, noisy_reconstruction, psnr=False)
                 with torch.no_grad():
                     tensor_original = torch.tensor(self.phantom).float().to(self.device)
                     loss_eval = torch.nn.functional.mse_loss(denoised_image, tensor_original)
@@ -255,7 +255,7 @@ class N2I:
         self.plot_evaluation_evolution(evaluation_results, source_image=noisy_reconstruction, target_image=self.phantom)
         
 
-    def Evaluate(self, rec_input, noisy_reconstruction):
+    def Evaluate(self, rec_input, noisy_reconstruction, psnr=True):
         """
         Extract from the denoised reconstruction from the network.
         
@@ -283,7 +283,8 @@ class N2I:
 
             pred_splits = torch.stack(pred_splits).to(self.device, dtype=torch.float32)
             denoised_image = torch.mean(pred_splits, dim=0)
-            self.compute_psnr(denoised_image, noisy_reconstruction)
+            if psnr:
+                self.compute_psnr(denoised_image, noisy_reconstruction)
 
         return denoised_image
         

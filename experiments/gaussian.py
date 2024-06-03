@@ -22,7 +22,7 @@ REC_ALGORITHM = 'FBP_CUDA'
 
 # Training hyperparameters
 EPS = 50
-BS = 8
+BS = 2
 LR = 0.005
 
 # Plotting
@@ -58,7 +58,7 @@ n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS, comment="gaussian")
 n2i.Train(rec_splits, rec)
 
 # Evaluate model
-denoised_phantom = n2i.Evaluate(rec_splits, rec)
+denoised_phantom = n2i.Evaluate(rec_splits, rec, psnr=True)
 
 # Convert denoised_phantom to numpy array if it's a PyTorch tensor
 denoised_phantom = denoised_phantom.cpu().numpy()
