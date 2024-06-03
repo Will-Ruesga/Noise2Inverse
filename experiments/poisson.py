@@ -27,6 +27,9 @@ EPS = 50
 BS = 8
 LR = 0.005
 
+# Plotting
+VMAX = 1
+
 ####################################################################################################
 #                                              MAIN                                                #
 ####################################################################################################
@@ -48,45 +51,31 @@ rec = sinogram.reconstruct(REC_ALGORITHM)
 
 # Train model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS)
-n2i.Train(rec_splits, original_image=foam)
+n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS, comment="poisson")
+n2i.Train(rec_splits, rec)
 
 # Evaluate model
-denoised_phantom = n2i.Evaluate(rec_splits)
+denoised_phantom = n2i.Evaluate(rec_splits, rec)
 
 # Convert denoised_phantom to numpy array if it's a PyTorch tensor
 denoised_phantom = denoised_phantom.cpu().numpy()
 
 # Create a figure with two rows and three columns
-fig, axs = plt.subplots(2, 3, figsize=(15, 10))
-
-# Plot the first row without vmin and vmax
-axs[0, 0].imshow(foam[128], cmap='gray')
-axs[0, 0].axis('off')
-axs[0, 0].set_title("Original")
-
-axs[0, 1].imshow(rec[128], cmap='gray')
-axs[0, 1].axis('off')
-axs[0, 1].set_title("Noisy")
-
-axs[0, 2].imshow(denoised_phantom[128], cmap='gray')
-axs[0, 2].axis('off')
-axs[0, 2].set_title("Denoised")
+fig, axs = plt.subplots(1, 3, figsize=(15, 10))
+axs = axs.flatten()
 
 # Plot the second row with vmin=0 and vmax=1/ATTENUATION
-# VMAX = 1/ATTENUATION
-VMAX = 0.004
-axs[1, 0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)
-axs[1, 0].axis('off')
-axs[1, 0].set_title("Original (Scaled)")
+axs[0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[0].axis('off')
+axs[0].set_title("Original")
 
-axs[1, 1].imshow(rec[128], cmap='gray', vmin=0, vmax=VMAX)
-axs[1, 1].axis('off')
-axs[1, 1].set_title("Noisy (Scaled)")
+axs[1].imshow(rec[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[1].axis('off')
+axs[1].set_title("Noisy")
 
-axs[1, 2].imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=VMAX)
-axs[1, 2].axis('off')
-axs[1, 2].set_title("Denoised (Scaled)")
+axs[2].imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[2].axis('off')
+axs[2].set_title("Denoised")
 
 # Save the figure
 plt.tight_layout()

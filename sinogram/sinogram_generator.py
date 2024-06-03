@@ -1,6 +1,7 @@
 import astra
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Optional, Tuple
 
 
 ####################################################################################################
@@ -210,6 +211,7 @@ class Sinogram:
         """
         # Apply attenuation
         att_noise = non_ind_noise * attenuation
+        att_noise = np.array([att_noise for _ in range(self.sinogram.shape[0])])
         
         # Add the non-independent noise
         noised_sin = self.sinogram.astype(np.float32) + att_noise.astype(np.float32)
@@ -219,7 +221,7 @@ class Sinogram:
 
 
     ####################################################################################################
-    def add_non_zero_mean_noise(self, std_mean: float = 0.5, std: float = 1):
+    def add_gaussian_noise(self, bound: Optional[Tuple[float, float]] = None, std: float = 1):
         """
             Adds the non-zero mean (Gaussian) noise to the sinogram.
 
@@ -227,18 +229,14 @@ class Sinogram:
             :param std: Standard deviation.
         """
         # Generate non zero mean gaussian noise
-        # mean_array = np.random.normal(0, std_mean, self.sinogram.shape)
-        mean_array = np.random.uniform(-std_mean, std_mean, self.sinogram.shape)
+        if bound is None:
+            mean_array = 0
+        else:
+            a, b = bound
+            mean_array = np.random.uniform(a, b, self.sinogram.shape)
 
         # Add it to sinogram
         self.sinogram += np.random.normal(mean_array, std, self.sinogram.shape)
-
-
-    ####################################################################################################
-    def add_undersampling_arifact():
-        # TODO
-        ...
-        pass
 
 
     ####################################################################################################

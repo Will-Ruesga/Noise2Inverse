@@ -5,6 +5,7 @@ import datetime
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from torchmetrics.image import PeakSignalNoiseRatio
 
 from phantoms.foam_generator import FoamGenerator
 from phantoms.sparse_generator import SparseGenerator
@@ -23,7 +24,7 @@ ATTENUATION = 200
 
 class N2I:
     def __init__(self, phantom, network_name: str = "unet", device="cpu", num_splits: int = 4, strategy="X:1",
-                 lr: float = 0.001, bs: int = 16, epochs: int = 30):
+                 lr: float = 0.001, bs: int = 16, epochs: int = 30, vmax: float = 1, comment: str = ""):
         """
         Initialize the N2I class with the sinogram.
         This class recives the sinogram and has two methods, for training
@@ -34,7 +35,7 @@ class N2I:
         # Set parameter values
         os.makedirs("runs", exist_ok=True)
         current_runs = len(os.listdir("runs"))
-        self.id = f"{datetime.date.today()}_run{current_runs+1}"
+        self.id = f"{datetime.date.today()}_run{current_runs+1}" + f"_{comment}" if comment else ""
         self.dir = f"runs/{self.id}"
         os.makedirs(self.dir, exist_ok=True)
         self.num_splits = num_splits
@@ -56,6 +57,9 @@ class N2I:
         # Phantom
         self.phantom = phantom
         np.save(f"{self.dir}/phantom.npy", self.phantom)
+
+        # Plotting
+        self.vmax = vmax
 
     def save_nn_settings(self):
         with open(f"{self.dir}/settings.txt", "w") as f:
@@ -106,12 +110,28 @@ class N2I:
 
         return source_rec, target_rec
     
+    def plot_evaluation_evolution(self, evaluation_results: dict, source_image, target_image):
+        num_evals = len(evaluation_results)
+        plt.figure()
+        axs = plt.subplots(num_evals+2, figsize=(4.5*(num_evals+2), 5))
+        axs = axs.flatten()
+        axs[0].imshow(source_image, cmap='gray', vmin=0, vmax=self.vmax)
+        axs[0].axis('off')
+        axs[0].set_title("Noisy reconstruction")
+        i = 1
+        for epoch, eval_res in evaluation_results.items():
+            axs[i].imshow(eval_res, cmap='gray', vmin=0, vmax=self.vmax)
+            axs[i].axis('off')
+            axs[i].set_title(f"Epoch {epoch}")
+            i += 1
+        axs[-1].imshow(target_image, cmap='gray', vmin=0, vmax=self.vmax)
+        axs[-1].axis('off')
+        axs[-1].set_title("Phantom")
 
     def plot_status(self, output, target, epoch, k_split=None, eval=False, sl: int = 128):
         plt.figure()
         plt.subplot(1, 2, 1)
-        # VMAX = 1/ATTENUATION
-        VMAX = 0.004
+        VMAX = 1
         plt.imshow(output[sl].cpu().detach(), cmap='gray', vmin=0, vmax=VMAX)
         plt.title("Network output")
         plt.subplot(1, 2, 2)
@@ -124,20 +144,49 @@ class N2I:
             os.makedirs(f"{self.dir}/figures_train", exist_ok=True)
             plt.savefig(f"{self.dir}/figures_train/ep{epoch}_{k_split}split.png", dpi=300)
 
-    def plot_training_losses(self, losses_split, epoch_losses, eval_losses):
-        plt.figure()
+    def plot_training_losses(self, losses_split, eval_losses):
+        plt.figure(figsize=(12, 5))
+
+        # Evaluation loss
+        plt.subplot(1, 2, 1)
+        plt.title("Evaluation loss")
+        plt.plot(np.arange(0, self.epochs, 5), eval_losses)
+        plt.grid()
+        plt.yscale("log")
+        plt.xlabel("Epochs")
+        plt.ylabel("MSE Loss")
+
+        # Training losses
+        plt.subplot(1, 2, 2)
         for k in range(self.num_splits):
             plt.plot(losses_split[k], label=f"Split {k}")
-        plt.plot(np.array(epoch_losses)/self.num_splits, label="Split avg")
-        plt.plot(np.arange(0, self.epochs, 5), eval_losses, label="Evaluation")
-        plt.title(f"Losses {self.network_name} - lr: {self.lr} epochs: {self.epochs}")
+        plt.grid()
+        plt.title(f"Training losses")
         plt.yscale("log")
+        plt.xlabel("Epochs")
+        plt.ylabel("MSE Loss")
         plt.legend()
+        
         os.makedirs(f"{self.dir}/losses", exist_ok=True)
         plt.savefig(f"{self.dir}/losses/losses_splits_{self.network_name}_lr{self.lr}_epochs{self.epochs}.png", dpi=300)
 
+    def compute_psnr(self, input, noisy_reconstruction):
+        """
+        Compute the Peak Signal to Noise Ratio (PSNR) between the input and target images.
+        :param input: The input image
+        :param target: The target image
+        """
+        psnr_method = PeakSignalNoiseRatio()
+        psnr_denoised = psnr_method(input, self.phantom)
+        psnr_noisy = psnr_method(noisy_reconstruction, self.phantom)
 
-    def Train(self, rec_input, original_image=None):
+        print(f"Denoised PSNR: {psnr_denoised}")
+        print(f"Noisy PSNR: {psnr_noisy}")
+        with open(f"{self.dir}/psnr.txt", "w") as f:
+            f.write(f"PSNR Denoised: {psnr_denoised}")
+            f.write(f"PSNR Noisy: {psnr_noisy}")
+
+    def Train(self, rec_input, noisy_reconstruction):
         """
         Train the model with the provided training data.
 
@@ -153,12 +202,12 @@ class N2I:
         # scaler = torch.cuda.amp.GradScaler()  # Use GradScaler for mixed precision training
 
         # Make sure the path for the weights exists
-        epoch_losses = []
         eval_losses = []
         losses_split = {}
+        evaluation_results = {}
 
         # Epoch training loop
-        for epoch in range(self.epochs):
+        for epoch in range(1, self.epochs+1):
             self.network.train()
             epoch_loss = 0
             for k in range(self.num_splits):
@@ -176,15 +225,11 @@ class N2I:
                     self.plot_status(slices_pred, target_recs, epoch, k, eval=False)
                 
                 target_recs = target_recs.to(self.device, dtype=torch.float32)
-                # loss = (slices_pred - target_recs).mean()
                 loss = torch.nn.functional.mse_loss(slices_pred, target_recs)
                 epoch_loss += loss.item()
 
                 # Update optimizer and scaler
                 optimizer.zero_grad()
-                # scaler.scale(loss).backward()
-                # scaler.step(optimizer)
-                # scaler.update()
                 loss.backward()
                 optimizer.step()
                 if epoch == 0:
@@ -195,23 +240,22 @@ class N2I:
             # Print progress and loss and save network weights each epoch
             print(f"Epoch {epoch+1} / {self.epochs} | Loss: {epoch_loss}")
             torch.save(self.network.state_dict(), f"{self.dir}/weights.pth")
-            epoch_losses.append(epoch_loss)
-            if epoch % 5 == 0:
-                assert original_image is not None, "Original image is required for evaluation"
+            if epoch % 5 == 0 or epoch == 1:
                 denoised_image = self.Evaluate(rec_input)
                 with torch.no_grad():
-                    tensor_original = torch.tensor(original_image).float().to(self.device)
+                    tensor_original = torch.tensor(self.phantom).float().to(self.device)
                     loss_eval = torch.nn.functional.mse_loss(denoised_image, tensor_original)
                     eval_losses.append(loss_eval.item())
-                    
-                    #Plot
+                    evaluation_results[epoch] = denoised_image.cpu().numpy()
+
                     self.plot_status(denoised_image, tensor_original, epoch, eval=True)
 
-        # Plot losses
-        self.plot_training_losses(losses_split, epoch_losses, eval_losses)
+        # Plot losses and prediction evolution
+        self.plot_training_losses(losses_split, eval_losses)
+        self.plot_evaluation_evolution(evaluation_results, source_image=noisy_reconstruction, target_image=self.phantom)
         
 
-    def Evaluate(self, rec_input, batch_size: int = 8):
+    def Evaluate(self, rec_input, noisy_reconstruction):
         """
         Extract from the denoised reconstruction from the network.
         
@@ -229,8 +273,8 @@ class N2I:
             for im in rec_input:
                 im = torch.tensor(im).float()
                 slices_pred = []
-                for i in range(0, im.shape[1], batch_size):
-                    batch_slices = im[i:i+batch_size, None, ...].to(self.device, dtype=torch.float32)
+                for i in range(0, im.shape[1], self.bs):
+                    batch_slices = im[i:i+self.bs, None, ...].to(self.device, dtype=torch.float32)
                     batch_predictions = self.network(batch_slices)
                     slices_pred.append(batch_predictions.squeeze())
 
@@ -239,6 +283,7 @@ class N2I:
 
             pred_splits = torch.stack(pred_splits).to(self.device, dtype=torch.float32)
             denoised_image = torch.mean(pred_splits, dim=0)
+            self.compute_psnr(denoised_image, noisy_reconstruction)
 
         return denoised_image
         
@@ -257,7 +302,7 @@ class N2I:
         :param network_name: The name of the network to use
         """
         if network_name == "unet":
-            self.network = UNet(1, 1, n_features=16).to(self.device)
+            self.network = UNet(1, 1, n_features=8).to(self.device)
         elif network_name == "dncnn":
             self.network = DnCNN(1, num_of_layers=8).to(self.device)
         else:
@@ -273,47 +318,3 @@ class N2I:
         :return: An optimizer instance
         """
         return torch.optim.Adam(self.network.parameters(), lr=learning_rate)
-
-
-# if __name__ == "__main__":
-#     # Generate sinogram
-#     load_experiment = False
-#     foam_generator = FoamGenerator(img_pixels=256, num_spheres=1000, prob_overlap=0)
-#     foam = foam_generator.create_phantom()
-
-#     sinogram = Sinogram(foam, num_proj=1024, num_iter=200)
-#     sinogram.generate()
-#     sinogram.add_poisson_noise(attenuation=ATTENUATION, photon_count=1000)
-#     proj_data = sinogram.sinogram
-#     sinogram.split_data(num_splits=4)
-#     split_sinograms = sinogram.split_sinograms
-#     reconstructions = sinogram.reconstruct_splits(split_sinograms, rec_algorithm='FBP_CUDA')
-#     reconstruction_noisy = sinogram.reconstruct(rec_algorithm='FBP_CUDA')
-
-#     # Train model
-#     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#     n2i = N2I(foam, network_name="unet", device=device, num_splits=4, strategy="X:1", lr=0.002, bs=16, epochs=30)
-#     n2i.Train(reconstructions, original_image=foam)
-
-#     # Evaluate model
-#     denoised_phantom = n2i.Evaluate(reconstructions)
-
-#     plt.figure()
-#     plt.subplot(1, 4, 1)
-#     plt.imshow(foam[128], cmap='gray')
-#     plt.axis('off')
-#     plt.title("Original")
-#     plt.subplot(1, 4, 2)
-#     plt.imshow(reconstruction_noisy[128], cmap='gray', vmin=0, vmax=1/ATTENUATION)
-#     plt.axis('off')
-#     plt.title("Noisy")
-#     plt.subplot(1, 4, 3)
-#     denoised_phantom = denoised_phantom.cpu().numpy()
-#     plt.imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=1/ATTENUATION)
-#     plt.axis('off')
-#     plt.title("Denoised")
-#     plt.subplot(1, 4, 4)
-#     plt.imshow(denoised_phantom[128], cmap='gray')
-#     plt.axis('off')
-#     plt.title("Denoised raw")
-#     plt.savefig(f"{n2i.dir}/results.png", dpi=400)

@@ -26,6 +26,8 @@ EPS = 100
 BS = 8
 LR = 0.001
 
+REC_ALGORITHM = 'FBP_CUDA'
+
 # Artifacts
 ART_TYPE = 'zinger' # 'ring' 'under'
 
@@ -36,16 +38,19 @@ OFFSET = 0,5
 NUM_ZINGERS = 50
 INTENSITY = 20
 
+# Plotting
+VMAX = 1
+
 ####################################################################################################
 #                                              MAIN                                                #
 ####################################################################################################
 
 ### ---------- INITIALIZE ---------- ###
 # Get pahntom
-phantom = np.load(PHANTOM_PATH + PHANTOM_NAME)
+foam = np.load(PHANTOM_PATH + PHANTOM_NAME)
 
 # Generate sinogram with desired noise
-sinogram = Sinogram(phantom, num_proj=N_PROJECTIONS, num_iter=N_ITERATIONS)
+sinogram = Sinogram(foam, num_proj=N_PROJECTIONS, num_iter=N_ITERATIONS)
 sinogram.generate()
 
 
@@ -56,36 +61,45 @@ if ART_TYPE == 'ring':
     sinogram.add_ring_artifact(position=rows/2, offset=OFFSET)
 elif ART_TYPE == 'zinger':
     sinogram.add_zinger_artifact(NUM_ZINGERS, INTENSITY)
-elif ART_TYPE == 'under':
-    pass
-
 
 
 ### ---------- TRAINING ---------- ###
 # Split the sinogram and reconstruct to prepare the data for training 
-sinogram.split_data(num_splits=K)
-reconst = sinogram.reconstruct_splits(sinogram.split_sinograms, rec_algorithm='FBP_CUDA')
-reconst_noisy = sinogram.reconstruct(sinogram.sinogram, rec_algorithm='FBP_CUDA')
+sinogram.split_data(K)
+rec_splits = sinogram.reconstruct_splits(sinogram.split_sinograms, REC_ALGORITHM)
+
+# Reconstruction
+rec = sinogram.reconstruct(REC_ALGORITHM)
 
 # Train model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-n2i = N2I(network_name="unet", device=device, num_splits=K)
-n2i.Train(reconst, epochs=EPS, batch_size=BS, learning_rate=LR)
+n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS, comment=f"{ART_TYPE}_artifact")
+n2i.Train(rec_splits, rec)
 
 ### ---------- EVALUATION ---------- ###
-denoised_phantom = n2i.Evaluate(reconst)
+# Evaluate model
+denoised_phantom = n2i.Evaluate(rec_splits, rec)
 
-# Plot of the results
-plt.figure()
-plt.subplot(1, 3, 1)
-plt.imshow(phantom[128], cmap='gray')
-plt.axis('off')
-plt.title("Original")
-plt.subplot(1, 4, 2)
-plt.imshow(reconst_noisy[128], cmap='gray', vmin=0, vmax=1/100)
-plt.axis('off')
-plt.title("Noisy")
-plt.subplot(1, 4, 3)
-plt.imshow(denoised_phantom.cpu().numpy()[128], cmap='gray', vmin=0, vmax=1/100)
-plt.axis('off')
-plt.title("Denoised")
+# Convert denoised_phantom to numpy array if it's a PyTorch tensor
+denoised_phantom = denoised_phantom.cpu().numpy()
+
+# Create a figure with two rows and three columns
+fig, axs = plt.subplots(1, 3, figsize=(15, 10))
+axs = axs.flatten()
+
+axs[0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[0].axis('off')
+axs[0].set_title("Original")
+
+axs[1].imshow(rec[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[1].axis('off')
+axs[1].set_title("Noisy")
+
+axs[2].imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=VMAX)
+axs[2].axis('off')
+axs[2].set_title("Denoised")
+
+# Save the figure
+plt.tight_layout()
+plt.savefig(f"{n2i.dir}/results.png", dpi=400)
+plt.show()
