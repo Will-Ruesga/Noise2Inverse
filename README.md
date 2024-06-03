@@ -17,8 +17,6 @@ python3 noise2inverse/n2i.py
 
 ## Phantom generation
 
-**Guillem Casals and Eduard Ruiz**
-
 This folder contains the code to generate 3D cylindrical foam phantoms based on two methods:
 
 - **Sparse generation**. This method is very simple but less efficient. File: `sparse_generator.py`.
@@ -31,8 +29,6 @@ an integer value that defines the number of pixels of the side of the phantom (3
 The representation of both methods for comparison is generated with `img_phantom_comparison.py`.
 
 ## Sinogram generation
-
-**Guillem Casals and Eduard Ruiz**
 
 This project contains the `foam_generator.py` file with the `FoamGenerator` class to generate the phantom. The `sinogram_generator.py` file contains the code to generate a sinogram, add noise and reconstruct. Different representations are generated to visualize the sinograms and reconstructions with certain degrees of noise.
 
