@@ -9,7 +9,7 @@ from noise2inverse.n2i import N2I
 ####################################################################################################
 
 # Phantom
-PHANTOM_NAME = 'foam_phantom.npy'
+PHANTOM_NAME = 'foam_phantom_overlap.npy'
 PHANTOM_PATH = 'phantoms/save/'
 
 # Sinogram
@@ -22,7 +22,7 @@ REC_ALGORITHM = 'FBP_CUDA'
 
 # Training hyperparameters
 EPS = 50
-BS = 2
+BS = 8
 LR = 0.005
 
 # Plotting
@@ -64,7 +64,7 @@ denoised_phantom = n2i.Evaluate(rec_splits, rec, psnr=True)
 denoised_phantom = denoised_phantom.cpu().numpy()
 
 # Create a figure with two rows and three columns
-fig, axs = plt.subplots(2, 3, figsize=(15, 5))
+fig, axs = plt.subplots(2, 3, figsize=(15, 7.5), gridspec_kw={'height_ratios': [2, 1]})
 
 # Plot the first row without vmin and vmax
 axs[0, 0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)
@@ -83,8 +83,8 @@ axs[0, 2].set_title("Denoised")
 axs[1, 0].hist(foam[128].flatten(), bins=50, range=(0, 1), color='black')
 mean_foam = np.mean(foam[128])
 y_pos = np.histogram(foam[128], bins=50, range=(0, 1))[0].max()
-axs[1, 0].vlines(mean_foam, color='red', linestyle='dashed')
-axs[1, 0].text(mean_foam, y_pos, f"Mean: {mean_foam:.2f}", color='red')
+axs[1, 0].vlines(mean_foam, 0, y_pos, color='red', linestyle='dashed')
+axs[1, 0].text(mean_foam + 0.1, y_pos - 0.1*y_pos, f"Mean: {mean_foam:.2f}", color='red', fontsize=10)
 axs[1, 0].set_xlabel("Pixel intensity")
 axs[1, 0].set_ylabel("Frequency")
 axs[1, 0].set_title("Original histogram")
@@ -92,7 +92,8 @@ axs[1, 0].set_title("Original histogram")
 axs[1, 1].hist(rec[128].flatten(), bins=50, range=(0, 1), color='black')
 mean_noisy = np.mean(rec[128])
 y_pos = np.histogram(rec[128], bins=50, range=(0, 1))[0].max()
-axs[1, 1].vlines(mean_noisy, color='red', linestyle='dashed')
+axs[1, 1].vlines(mean_noisy, 0, y_pos, color='red', linestyle='dashed')
+axs[1, 1].text(mean_noisy + 0.1, y_pos - 0.1*y_pos, f"Mean: {mean_noisy:.2f}", color='red', fontsize=10)
 axs[1, 1].set_xlabel("Pixel intensity")
 axs[1, 1].set_ylabel("Frequency")
 axs[1, 1].set_title("Noisy histogram")
@@ -100,7 +101,8 @@ axs[1, 1].set_title("Noisy histogram")
 axs[1, 2].hist(denoised_phantom[128].flatten(), bins=50, range=(0, 1), color='black')
 mean_denoised = np.mean(denoised_phantom[128])
 y_pos = np.histogram(denoised_phantom[128], bins=50, range=(0, 1))[0].max()
-axs[1, 2].vlines(mean_denoised, color='red', linestyle='dashed')
+axs[1, 2].vlines(mean_denoised, 0, y_pos, color='red', linestyle='dashed')
+axs[1, 2].text(mean_denoised + 0.1, y_pos - 0.1*y_pos, f"Mean: {mean_denoised:.2f}", color='red', fontsize=10)
 axs[1, 2].set_xlabel("Pixel intensity")
 axs[1, 2].set_ylabel("Frequency")
 axs[1, 2].set_title("Denoised histogram")

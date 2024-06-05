@@ -1,41 +1,40 @@
-import astra
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..sinogram.sinogram_generator import Sinogram
-from ..noise2inverse.n2i import N2I
+from sinogram.sinogram_generator import Sinogram
+from noise2inverse.n2i import N2I
 ####################################################################################################
 #                                             CONSTANTS                                            #
 ####################################################################################################
 
 # Phantom
-PHANTOM_NAME = 'Foam.nyp'
-PHANTOM_PATH = 'C:/Users/wilru/Documents/LU/S4/CITO/Noise2Inverse/phantoms/save/'
+PHANTOM_NAME = 'foam_phantom_overlap.npy'
+PHANTOM_PATH = 'phantoms/save/'
 
 # Sinogram
 N_PROJECTIONS = 1024
 N_ITERATIONS = 200
+K = 4
 
 # Experiement
 WAVE = 'sin' # 'sinc'
-K = 4
 
 # Training hyperparameters
-EPS = 100
+EPS = 50
 BS = 8
-LR = 0.001
+LR = 0.005
 
 REC_ALGORITHM = 'FBP_CUDA'
 
 # Artifacts
-ART_TYPE = 'zinger' # 'ring' 'under'
+ART_TYPE = 'zinger' # zinger or ring
 
 # Ring artifact
-OFFSET = 0,5
+OFFSET = 0.5
 
 # Zinger artifact
-NUM_ZINGERS = 50
+NUM_ZINGERS = 10
 INTENSITY = 20
 
 # Plotting
@@ -56,9 +55,9 @@ sinogram.generate()
 
 ### ---------- ARTIFACT ---------- ###
 # Create Non Independent noise
-rows, cols = sinogram.shape
+depth, rows, cols = sinogram.sinogram.shape
 if ART_TYPE == 'ring':
-    sinogram.add_ring_artifact(position=rows/2, offset=OFFSET)
+    sinogram.add_ring_artifact(position=int(np.random.uniform(0, cols)), offset=OFFSET)
 elif ART_TYPE == 'zinger':
     sinogram.add_zinger_artifact(NUM_ZINGERS, INTENSITY)
 
@@ -84,7 +83,7 @@ denoised_phantom = n2i.Evaluate(rec_splits, rec)
 denoised_phantom = denoised_phantom.cpu().numpy()
 
 # Create a figure with two rows and three columns
-fig, axs = plt.subplots(1, 3, figsize=(15, 10))
+fig, axs = plt.subplots(1, 3, figsize=(15, 6))
 axs = axs.flatten()
 
 axs[0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)

@@ -88,7 +88,7 @@ class FoamGenerator:
                         im[x][y][z] = 0
         return im
 
-    def create_phantom(self, overlap_flag=False):
+    def create_phantom(self):
         phantom = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
         sphere = namedtuple("sphere", ["center_x", "center_y", "center_z", "radius"])
     
@@ -124,7 +124,7 @@ class FoamGenerator:
         phantom = phantom.transpose(2, 0, 1)
         self.phantom = phantom
         os.makedirs('./phantoms/save', exist_ok=True)
-        if overlap_flag:
+        if self.prob_overlap > 0:
             np.save('./phantoms/save/foam_phantom_overlap.npy', phantom)
         else:
             np.save('./phantoms/save/foam_phantom.npy', phantom)

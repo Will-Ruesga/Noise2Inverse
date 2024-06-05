@@ -28,7 +28,7 @@ class SparseGenerator:
         :param prob_overlap: prbablility (0-1) of the spheres overlapping with eachother
     '''
     
-    def __init__(self, img_pixels: int = 512, num_spheres: int = 1000, prob_overlap: float = 0):
+    def __init__(self, img_pixels: int = 256, num_spheres: int = 1000, prob_overlap: float = 0):
         self.img_pixels = img_pixels
         self.num_spheres = num_spheres
         self.prob_overlap = prob_overlap
@@ -76,7 +76,7 @@ class SparseGenerator:
         except:
             return False
 
-    def create_phantom(self, overlap_flag=False):
+    def create_phantom(self):
         phantom = np.zeros((self.img_pixels, self.img_pixels, self.img_pixels))
         # Generate the big circle
         phantom = self.cylinder(phantom, (self.img_pixels // 2, self.img_pixels // 2), self.img_pixels // 2, intensity=1)
@@ -113,7 +113,10 @@ class SparseGenerator:
                 high_radius = max(1, high_radius - 2)
 
         # Save phantom
-        if overlap_flag:
+        phantom = phantom.transpose(2, 0, 1)
+        self.phantom = phantom
+        if self.prob_overlap:
             np.save('./phantoms/save/sparse_phantom_overlap.npy', phantom)
         else:
             np.save('./phantoms/save/sparse_phantom.npy', phantom)
+        return phantom

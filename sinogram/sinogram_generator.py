@@ -210,14 +210,14 @@ class Sinogram:
             :param attenuation: Attenuation factor for the wave.
         """
         # Apply attenuation
-        att_noise = non_ind_noise * attenuation
+        att_noise = non_ind_noise * (attenuation * np.max(self.sinogram))
         att_noise = np.array([att_noise for _ in range(self.sinogram.shape[0])])
         
         # Add the non-independent noise
-        noised_sin = self.sinogram.astype(np.float32) + att_noise.astype(np.float32)
+        self.sinogram = self.sinogram.astype(np.float32) + att_noise.astype(np.float32)
 
         # Normalize the combined image to fit within 0-1
-        self.sinogram = (noised_sin - np.min(noised_sin)) / (np.max(noised_sin) - np.min(noised_sin))
+        # self.sinogram = (noised_sin - np.min(noised_sin)) / (np.max(noised_sin) - np.min(noised_sin))
 
 
     ####################################################################################################
@@ -248,7 +248,8 @@ class Sinogram:
             :param intensity: The intensity of the artifact.
         """
         # Add the ring artifact
-        self.sinogram[position, :] += offset
+        offset = offset * np.max(self.sinogram)
+        self.sinogram[:, :, position] += offset
 
     ####################################################################################################
     def add_zinger_artifact(self, num_zingers, intensity):
@@ -263,7 +264,9 @@ class Sinogram:
             ndarray: The sinogram with the added zinger artifacts.
         """
         # Get the dimensions of the sinogram
-        rows, cols = self.sinogram.shape
+        depth, rows, cols = self.sinogram.shape
+
+        intensity = intensity * np.max(self.sinogram)
 
         # Add zinger artifacts at random positions
         for _ in range(num_zingers):
@@ -272,4 +275,4 @@ class Sinogram:
             col = np.random.randint(0, cols)
             
             # Add the intensity to create the zinger artifact
-            self.sinogram[row, col] += intensity
+            self.sinogram[:, row, col] += intensity

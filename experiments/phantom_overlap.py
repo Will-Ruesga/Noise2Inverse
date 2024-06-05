@@ -28,8 +28,9 @@ BS = 8
 LR = 0.005
 
 # Phantom
-PHANTOM = "geometrical"
+PHANTOM = "sparse"
 OVERLAP = [0, 0.2]
+NUM_SPHERES = 1000
 
 # Plotting
 VMAX = 1
@@ -44,10 +45,10 @@ elif PHANTOM == "sparse":
     foam_generator_cls = SparseGenerator
 
 # Create a figure with two rows and three columns
-fig, axs = plt.subplots(2, 3, figsize=(15, 5))
+fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
 for i, overlap in enumerate(OVERLAP):
-    foam_generator = foam_generator_cls(prob_overlap=overlap)
+    foam_generator = foam_generator_cls(num_spheres=NUM_SPHERES, prob_overlap=overlap)
     foam = foam_generator.create_phantom()
 
     # Generate sinogram
@@ -65,7 +66,7 @@ for i, overlap in enumerate(OVERLAP):
 
     # Train model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS, comment="gaussian")
+    n2i = N2I(foam, "unet", device, K, "X:1", LR, BS, EPS, comment="sparse")
     n2i.Train(rec_splits, rec)
 
     # Evaluate model
@@ -77,17 +78,16 @@ for i, overlap in enumerate(OVERLAP):
     # Plot the first row without vmin and vmax
     axs[i, 0].imshow(foam[128], cmap='gray', vmin=0, vmax=VMAX)
     axs[i, 0].axis('off')
-    axs[i, 0].set_title("Original" + "overlap" if overlap > 0 else "")
+    axs[i, 0].set_title("Original" + (" overlap" if overlap > 0 else ""))
 
     axs[i, 1].imshow(rec[128], cmap='gray', vmin=0, vmax=VMAX)
     axs[i, 1].axis('off')
-    axs[i, 1].set_title("Noisy" + "overlap" if overlap > 0 else "")
+    axs[i, 1].set_title("Noisy" + (" overlap" if overlap > 0 else ""))
 
     axs[i, 2].imshow(denoised_phantom[128], cmap='gray', vmin=0, vmax=VMAX)
     axs[i, 2].axis('off')
-    axs[i, 2].set_title("Denoised" + "overlap" if overlap > 0 else "")
+    axs[i, 2].set_title("Denoised" + (" overlap" if overlap > 0 else ""))
 
 # Save the figure
-plt.tight_layout()
-plt.savefig(f"comparison_{PHANTOM}_foam.png", dpi=400)
-plt.show()
+fig.tight_layout()
+fig.savefig(f"comparison_{PHANTOM}_foam.png", dpi=400)

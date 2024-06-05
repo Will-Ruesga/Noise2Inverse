@@ -85,11 +85,8 @@ class N2I:
         # Initiallize values
         source_rec = []
         target_rec = []
-        try:
-            list_indeces = list(range(len(split_recs)))
-            list_indeces.remove(num_split)
-        except:
-            import pdb; pdb.set_trace()
+        list_indeces = list(range(len(split_recs)))
+        list_indeces.remove(num_split)
 
         # Depending on the strategy we will perform a different split
         if self.strategy == "X:1":
@@ -102,7 +99,7 @@ class N2I:
 
         # If the strategy is invalid, return error
         else:
-            raise ValueError("Invalid source_imgs value")
+            raise ValueError("Invalid strategy. Please use 'X:1' or '1:X'.")
         
         # Convert to tensor floats
         source_rec = torch.tensor(source_rec).float()
@@ -134,9 +131,11 @@ class N2I:
         VMAX = 1
         plt.imshow(output[sl].cpu().detach(), cmap='gray', vmin=0, vmax=VMAX)
         plt.title("Network output")
+        plt.axis('off')
         plt.subplot(1, 2, 2)
         plt.imshow(target[sl].cpu().detach(), cmap='gray', vmin=0, vmax=VMAX)
         plt.title("Network target")
+        plt.axis('off')
         if eval:
             os.makedirs(f"{self.dir}/figures_eval", exist_ok=True)
             plt.savefig(f"{self.dir}/figures_eval/ep{epoch}eval.png", dpi=300)
@@ -150,7 +149,7 @@ class N2I:
         # Evaluation loss
         plt.subplot(1, 2, 1)
         plt.title("Evaluation loss")
-        plt.plot(np.arange(0, self.epochs, 5), eval_losses)
+        plt.plot(np.concatenate([np.array([1]), np.arange(0, self.epochs + 1, 5)[1:]]), eval_losses)
         plt.grid()
         plt.yscale("log")
         plt.xlabel("Epochs")
@@ -166,9 +165,10 @@ class N2I:
         plt.xlabel("Epochs")
         plt.ylabel("MSE Loss")
         plt.legend()
+        plt.tight_layout()
         
         os.makedirs(f"{self.dir}/losses", exist_ok=True)
-        plt.savefig(f"{self.dir}/losses/losses_splits_{self.network_name}_lr{self.lr}_epochs{self.epochs}.png", dpi=300)
+        plt.savefig(f"{self.dir}/losses/losses.png", dpi=300)
 
     def compute_psnr(self, input, noisy_reconstruction):
         """
@@ -177,8 +177,8 @@ class N2I:
         :param target: The target image
         """
         psnr_method = PeakSignalNoiseRatio()
-        psnr_denoised = psnr_method(input.cpu(), self.phantom)
-        psnr_noisy = psnr_method(noisy_reconstruction, self.phantom)
+        psnr_denoised = psnr_method(input.cpu(), torch.tensor(self.phantom))
+        psnr_noisy = psnr_method(torch.tensor(noisy_reconstruction), torch.tensor(self.phantom))
 
         print(f"Denoised PSNR: {psnr_denoised}")
         print(f"Noisy PSNR: {psnr_noisy}")
@@ -246,13 +246,13 @@ class N2I:
                     tensor_original = torch.tensor(self.phantom).float().to(self.device)
                     loss_eval = torch.nn.functional.mse_loss(denoised_image, tensor_original)
                     eval_losses.append(loss_eval.item())
-                    evaluation_results[epoch] = denoised_image.cpu().numpy()
+                    # evaluation_results[epoch] = denoised_image.cpu().numpy()
 
                     self.plot_status(denoised_image, tensor_original, epoch, eval=True)
 
         # Plot losses and prediction evolution
         self.plot_training_losses(losses_split, eval_losses)
-        self.plot_evaluation_evolution(evaluation_results, source_image=noisy_reconstruction, target_image=self.phantom)
+        # self.plot_evaluation_evolution(evaluation_results, source_image=noisy_reconstruction, target_image=self.phantom)
         
 
     def Evaluate(self, rec_input, noisy_reconstruction, psnr=True):
