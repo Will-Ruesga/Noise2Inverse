@@ -28,18 +28,6 @@ an integer value that defines the number of pixels of the side of the phantom (3
 
 The representation of both methods for comparison is generated with `img_phantom_comparison.py`.
 
-## Sinogram generation
-
-This project contains the `foam_generator.py` file with the `FoamGenerator` class to generate the phantom. The `sinogram_generator.py` file contains the code to generate a sinogram, add noise and reconstruct. Different representations are generated to visualize the sinograms and reconstructions with certain degrees of noise.
-
-To run the code, run through the terminal:
-
-```
-python3 sinogram_generator.py
-```
-
-It is important to have an environment with the Astra toolbox installed in order to run the code.
-
 ## Run the experiments
 
 In order to run the experiments, you should execute the different Python scripts located in the `experiments` folder.
@@ -50,3 +38,5 @@ python3 experiments/$EXPERIMENT$.py
 ```
 
 Where EXPERIMENT is the name of the experiment you wish to execute.
+It is important to have an environment with the Astra toolbox and pytorch installed in order to run the code.
+
