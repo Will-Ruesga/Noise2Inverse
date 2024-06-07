@@ -39,3 +39,14 @@ python3 sinogram_generator.py
 ```
 
 It is important to have an environment with the Astra toolbox installed in order to run the code.
+
+## Run the experiments
+
+In order to run the experiments, you should execute the different Python scripts located in the `experiments` folder.
+Input in the terminal:
+
+```
+python3 experiments/$EXPERIMENT$.py
+```
+
+Where $EXPERIMENT$ is the name of the experiment you wish to execute.
