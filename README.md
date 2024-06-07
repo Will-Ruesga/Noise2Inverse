@@ -49,4 +49,4 @@ Input in the terminal:
 python3 experiments/$EXPERIMENT$.py
 ```
 
-Where $EXPERIMENT$ is the name of the experiment you wish to execute.
+Where EXPERIMENT is the name of the experiment you wish to execute.
